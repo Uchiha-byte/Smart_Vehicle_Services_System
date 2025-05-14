@@ -20,7 +20,7 @@ A modern, AI-powered vehicle service management system built with Python and Str
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone <https://github.com/Uchiha-byte/Smart_Vehicle_Services_System.git>
 cd vehicle-service-system
 ```
 
