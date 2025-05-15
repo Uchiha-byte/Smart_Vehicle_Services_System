@@ -6,9 +6,200 @@ from datetime import datetime
 import plotly.express as px
 import pandas as pd
 import uuid
+import google.generativeai as genai
+from typing import Dict, List, Optional
 
 # Load environment variables
 load_dotenv('api.env')
+
+# Configure Gemini API
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    st.error("Gemini API key not found. Please check your api.env file.")
+    st.stop()
+
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # Initialize Gemini model with gemini-1.5-flash
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error(f"Error initializing Gemini API: {str(e)}")
+    st.stop()
+
+def get_auto_assist_response(prompt: str, context: Optional[Dict] = None) -> str:
+    """
+    Get AI-powered suggestions and insights using Gemini API.
+    
+    Args:
+        prompt (str): The user's input or query
+        context (Dict, optional): Additional context for better responses
+        
+    Returns:
+        str: AI-generated response
+    """
+    try:
+        # Prepare the full prompt with context
+        full_prompt = f"""
+        You are an automotive service expert AI assistant. Provide clear, concise responses in bullet points.
+        
+        Context: {context if context else 'No additional context provided'}
+        
+        User Query: {prompt}
+        
+        Please provide your response in this format:
+        • Main point 1\n\n
+        • Main point 2\n\n
+        • Main point 3\n\n
+        
+        Keep each point brief and easy to understand.
+        Make sure each bullet point is on a separate line with a blank line between them.
+        """
+        
+        # Generate response with error handling
+        try:
+            response = model.generate_content(full_prompt)
+            if response and hasattr(response, 'text'):
+                return response.text
+            else:
+                return "I apologize, but I received an invalid response from the AI service. Please try again later."
+        except Exception as e:
+            st.error(f"Error generating AI response: {str(e)}")
+            return "I apologize, but I'm currently unable to provide AI assistance. Please try again later or contact our support team."
+    except Exception as e:
+        return f"Error getting AI response: {str(e)}"
+
+def get_service_recommendations(vehicle_type: str, vehicle_model: str, service_history: List[Dict]) -> str:
+    """
+    Get AI-powered service recommendations based on vehicle details and history.
+    
+    Args:
+        vehicle_type (str): Type of vehicle (Car/Motorcycle)
+        vehicle_model (str): Model of the vehicle
+        service_history (List[Dict]): List of previous service records
+        
+    Returns:
+        str: AI-generated service recommendations
+    """
+    try:
+        prompt = f"""
+        Based on the following vehicle information, provide service recommendations in bullet points:
+        
+        Vehicle Type: {vehicle_type}
+        Vehicle Model: {vehicle_model}
+        Service History: {service_history}
+        
+        Please provide your response in this format:
+        
+        Recommended Maintenance:\n\n
+        • Item 1\n\n
+        • Item 2\n\n
+        
+        Common Issues to Watch:\n\n
+        • Issue 1\n\n
+        • Issue 2\n\n
+        
+        Preventive Tips:\n\n
+        • Tip 1\n\n
+        • Tip 2\n\n
+        
+        Keep each point brief and actionable.
+        Make sure each bullet point is on a separate line with a blank line between them.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error getting service recommendations: {str(e)}"
+
+def get_diagnostic_insights(symptoms: str, vehicle_details: Dict) -> str:
+    """
+    Get AI-powered diagnostic insights based on reported symptoms.
+    
+    Args:
+        symptoms (str): Reported vehicle symptoms/issues
+        vehicle_details (Dict): Vehicle information
+        
+    Returns:
+        str: AI-generated diagnostic insights
+    """
+    try:
+        prompt = f"""
+        Based on the following symptoms and vehicle details, provide diagnostic insights in bullet points:
+        
+        Symptoms: {symptoms}
+        Vehicle Details: {vehicle_details}
+        
+        Please provide your response in this format:
+        
+        Likely Causes:\n\n
+        • Cause 1\n\n
+        • Cause 2\n\n
+        
+        Severity Assessment:\n\n
+        • Level: [Low/Medium/High]\n\n
+        • Immediate Action Required: [Yes/No]\n\n
+        
+        Recommended Actions:\n\n
+        • Action 1\n\n
+        • Action 2\n\n
+        
+        Safety Considerations:\n\n
+        • Consideration 1\n\n
+        • Consideration 2\n\n
+        
+        Keep each point clear and concise.
+        Make sure each bullet point is on a separate line with a blank line between them.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error getting diagnostic insights: {str(e)}"
+
+def get_staff_assistance(task: str, context: Dict) -> str:
+    """
+    Get AI-powered assistance for staff members.
+    
+    Args:
+        task (str): The task or query from staff
+        context (Dict): Additional context about the task
+        
+    Returns:
+        str: AI-generated assistance
+    """
+    try:
+        prompt = f"""
+        As a service center staff assistant, provide guidance in bullet points:
+        
+        Task: {task}
+        Context: {context}
+        
+        Please provide your response in this format:
+        
+        Step-by-Step Guidance:\n\n
+        • Step 1\n\n
+        • Step 2\n\n
+        
+        Best Practices:\n\n
+        • Practice 1\n\n
+        • Practice 2\n\n
+        
+        Common Pitfalls:\n\n
+        • Pitfall 1\n\n
+        • Pitfall 2\n\n
+        
+        Quality Check Points:\n\n
+        • Check 1\n\n
+        • Check 2\n\n
+        
+        Keep each point brief and practical.
+        Make sure each bullet point is on a separate line with a blank line between them.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error getting staff assistance: {str(e)}"
 
 # Configure page with dark theme
 st.set_page_config(
@@ -21,82 +212,6 @@ st.set_page_config(
 # Load external CSS
 with open('static/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-
-# Custom CSS for dark theme
-st.markdown("""
-<style>
-    /* Dark theme colors */
-    :root {
-        --background-color: #0E1117;
-        --secondary-background-color: #262730;
-        --text-color: #FAFAFA;
-        --accent-color: #FF4B4B;
-    }
-    
-    .main {
-        background-color: var(--background-color);
-        color: var(--text-color);
-        padding: 0rem 1rem;
-    }
-    
-    .service-card {
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #2E2E2E;
-        margin: 10px 0;
-        background-color: var(--secondary-background-color);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        transition: transform 0.2s;
-        color: var(--text-color);
-    }
-    
-    .service-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        border: 1px solid var(--accent-color);
-    }
-    
-    .stButton>button {
-        width: 100%;
-        background-color: var(--accent-color);
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-    
-    .stButton>button:hover {
-        background-color: #FF6B6B;
-    }
-    
-    .stTextInput>div>div>input {
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-        border: 1px solid #2E2E2E;
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        color: var(--text-color) !important;
-    }
-    
-    .css-145kmo2 {
-        color: var(--text-color) !important;
-    }
-    
-    /* Dark theme for data editor */
-    .stDataFrame {
-        background-color: var(--secondary-background-color);
-    }
-    
-    /* Dark theme for select boxes */
-    .stSelectbox>div>div {
-        background-color: var(--secondary-background-color);
-        color: var(--text-color);
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # Initialize database
 def init_db():
@@ -113,7 +228,8 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS bookings
                  (booking_id TEXT PRIMARY KEY, customer_name TEXT, vehicle_type TEXT,
                   vehicle_number TEXT, service_type TEXT, booking_date DATE,
-                  time_slot TEXT, status TEXT, description TEXT)''')
+                  time_slot TEXT, status TEXT, description TEXT, last_service_date DATE,
+                  last_service_km INTEGER, service_items TEXT, additional_notes TEXT)''')
     
     conn.commit()
     conn.close()
@@ -122,7 +238,7 @@ def show_admin_dashboard():
     st.title("Admin Dashboard")
     
     # Create tabs for different admin functions
-    tabs = st.tabs(["Staff Management", "Inventory Management", "Booking Management"])
+    tabs = st.tabs(["Staff Management", "Inventory Management", "Booking Management", "AI Assistant"])
     
     with tabs[0]:  # Staff Management
         st.header("Staff Management")
@@ -155,26 +271,25 @@ def show_admin_dashboard():
     
     with tabs[1]:  # Inventory Management
         st.header("Inventory Management")
-        st.write("Here you can manage parts inventory")
+        st.write("Manage your inventory here")
         
         # Add inventory form
         with st.form("add_inventory_form"):
-            part_name = st.text_input("Part Name")
+            item_name = st.text_input("Item Name")
             quantity = st.number_input("Quantity", min_value=0, step=1)
-            price = st.number_input("Price", min_value=0.0, step=100.0)
-            status = st.selectbox("Status", ["In Stock", "Low Stock", "Out of Stock"])
-            submit_inventory = st.form_submit_button("Add Part")
+            price = st.number_input("Price", min_value=0.0, step=0.01)
+            submit_inventory = st.form_submit_button("Add Item")
             
-            if submit_inventory and part_name and price > 0:
+            if submit_inventory and item_name and quantity > 0 and price > 0:
                 conn = sqlite3.connect('vehicle_service.db')
                 c = conn.cursor()
-                c.execute("INSERT INTO inventory (part_id, name, quantity, price, status) VALUES (?, ?, ?, ?, ?)",
-                         (str(uuid.uuid4()), part_name, quantity, price, status))
+                c.execute("INSERT INTO inventory (item_id, name, quantity, price) VALUES (?, ?, ?, ?)",
+                         (str(uuid.uuid4()), item_name, quantity, price))
                 conn.commit()
                 conn.close()
-                st.success("Part added successfully!")
+                st.success("Item added successfully!")
         
-        # Display inventory list
+        # Display inventory
         conn = sqlite3.connect('vehicle_service.db')
         inventory_df = pd.read_sql_query("SELECT * FROM inventory", conn)
         conn.close()
@@ -185,9 +300,9 @@ def show_admin_dashboard():
     
     with tabs[2]:  # Booking Management
         st.header("Booking Management")
-        st.write("Here you can view and manage bookings")
+        st.write("Manage service bookings here")
         
-        # Display bookings
+        # Display current bookings
         conn = sqlite3.connect('vehicle_service.db')
         bookings_df = pd.read_sql_query("SELECT * FROM bookings", conn)
         conn.close()
@@ -195,8 +310,172 @@ def show_admin_dashboard():
         if not bookings_df.empty:
             st.write("Current Bookings:")
             st.dataframe(bookings_df)
-        else:
-            st.info("No bookings available")
+            
+            # Update booking status
+            with st.form("update_booking_status"):
+                booking_id = st.selectbox("Select Booking ID", bookings_df['booking_id'].tolist())
+                new_status = st.selectbox("New Status", ["Pending", "In Progress", "Completed", "Cancelled"])
+                submit_status = st.form_submit_button("Update Status")
+                
+                if submit_status:
+                    conn = sqlite3.connect('vehicle_service.db')
+                    c = conn.cursor()
+                    c.execute("UPDATE bookings SET status = ? WHERE booking_id = ?",
+                             (new_status, booking_id))
+                    conn.commit()
+                    conn.close()
+                    st.success("Booking status updated successfully!")
+    
+    with tabs[3]:  # AI Assistant
+        st.header("AI Assistant")
+        st.write("Get AI-powered assistance for your tasks")
+        
+        # Create tabs for different AI assistance features
+        ai_tabs = st.tabs(["General Assistance", "Symptom Checker", "Quick Actions"])
+        
+        with ai_tabs[0]:  # General Assistance
+            # Task input
+            task = st.text_area("Describe your task or question")
+            
+            if task:
+                # Get context from database
+                conn = sqlite3.connect('vehicle_service.db')
+                staff_df = pd.read_sql_query("SELECT * FROM staff", conn)
+                inventory_df = pd.read_sql_query("SELECT * FROM inventory", conn)
+                bookings_df = pd.read_sql_query("SELECT * FROM bookings", conn)
+                conn.close()
+                
+                context = {
+                    "staff_count": len(staff_df),
+                    "inventory_items": len(inventory_df),
+                    "active_bookings": len(bookings_df[bookings_df['status'] != 'Completed']),
+                    "recent_bookings": bookings_df.tail(5).to_dict('records')
+                }
+                
+                if st.button("Get AI Assistance"):
+                    with st.spinner("Getting AI assistance..."):
+                        assistance = get_staff_assistance(task, context)
+                        st.info("AI Assistance:")
+                        st.write(assistance)
+        
+        with ai_tabs[1]:  # Symptom Checker
+            st.subheader("Vehicle Symptom Checker")
+            
+            # Vehicle Type Selection
+            vehicle_type = st.selectbox("Select Vehicle Type", ["Car", "Motorcycle"])
+            
+            # Vehicle Details
+            col1, col2 = st.columns(2)
+            with col1:
+                vehicle_brand = st.selectbox("Select Brand", 
+                    sorted(car_models.keys()) if vehicle_type == "Car" else sorted(bike_models.keys()))
+            with col2:
+                vehicle_model = st.selectbox("Select Model", 
+                    sorted(car_models[vehicle_brand]) if vehicle_type == "Car" else sorted(bike_models[vehicle_brand]))
+            
+            # Vehicle Age and Usage
+            col3, col4 = st.columns(2)
+            with col3:
+                vehicle_age = st.number_input("Vehicle Age (years)", min_value=0, max_value=50, value=0)
+            with col4:
+                mileage = st.number_input("Current Mileage (KM)", min_value=0, value=0)
+            
+            # Last Service Details
+            col5, col6 = st.columns(2)
+            with col5:
+                last_service_date = st.date_input("Last Service Date (if any)", value=None)
+            with col6:
+                last_service_km = st.number_input("Last Service Mileage (KM)", min_value=0, value=0)
+            
+            # Symptoms Input
+            st.subheader("Describe the Symptoms")
+            symptoms = st.text_area(
+                "Please describe any issues, sounds, or behaviors you've noticed with your vehicle. "
+                "Be as detailed as possible about when and how these symptoms occur.",
+                height=150
+            )
+            
+            # Additional Context
+            st.subheader("Additional Context")
+            additional_context = st.text_area(
+                "Any additional information that might help diagnose the issue "
+                "(e.g., recent repairs, modifications, or unusual driving conditions)",
+                height=100
+            )
+            
+            if st.button("Get Diagnostic Analysis"):
+                if symptoms:
+                    with st.spinner("Analyzing symptoms..."):
+                        vehicle_details = {
+                            "type": vehicle_type,
+                            "brand": vehicle_brand,
+                            "model": vehicle_model,
+                            "age": vehicle_age,
+                            "mileage": mileage,
+                            "last_service_date": last_service_date,
+                            "last_service_km": last_service_km,
+                            "additional_context": additional_context
+                        }
+                        
+                        # Get diagnostic insights
+                        diagnosis = get_diagnostic_insights(symptoms, vehicle_details)
+                        
+                        # Display results in an organized way
+                        st.markdown("### Diagnostic Analysis")
+                        st.write(diagnosis)
+                        
+                        # Add a section for preventive maintenance tips
+                        st.markdown("### Preventive Maintenance Tips")
+                        maintenance_prompt = f"""
+                        Based on the vehicle details and symptoms:
+                        Vehicle: {vehicle_brand} {vehicle_model}
+                        Age: {vehicle_age} years
+                        Mileage: {mileage} KM
+                        Symptoms: {symptoms}
+                        
+                        Please provide:
+                        1. Preventive maintenance recommendations
+                        2. Regular maintenance schedule
+                        3. Warning signs to watch for
+                        4. Cost-effective maintenance tips
+                        """
+                        
+                        maintenance_tips = get_auto_assist_response(maintenance_prompt)
+                        st.write(maintenance_tips)
+                else:
+                    st.warning("Please describe the symptoms you're experiencing.")
+        
+        with ai_tabs[2]:  # Quick Actions
+            st.subheader("Quick Actions")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("Get Staff Performance Insights"):
+                    with st.spinner("Analyzing staff performance..."):
+                        context = {
+                            "staff_data": staff_df.to_dict('records'),
+                            "bookings_data": bookings_df.to_dict('records')
+                        }
+                        insights = get_auto_assist_response(
+                            "Analyze staff performance and provide insights for improvement",
+                            context
+                        )
+                        st.info("Staff Performance Insights:")
+                        st.write(insights)
+            
+            with col2:
+                if st.button("Get Inventory Optimization Suggestions"):
+                    with st.spinner("Analyzing inventory..."):
+                        context = {
+                            "inventory_data": inventory_df.to_dict('records'),
+                            "bookings_data": bookings_df.to_dict('records')
+                        }
+                        suggestions = get_auto_assist_response(
+                            "Analyze inventory levels and provide optimization suggestions",
+                            context
+                        )
+                        st.info("Inventory Optimization Suggestions:")
+                        st.write(suggestions)
 
 def show_booking_history(customer_name=None):
     st.header("Your Booking History")
@@ -372,7 +651,7 @@ def get_vehicle_data():
                 "Bobber": [
                     "42 Bobber"
                 ]
-            ],
+            },
             "Brands": [
                 "Honda",
                 "Bajaj",
@@ -387,6 +666,23 @@ def get_vehicle_data():
             ]
         }
     }
+
+# Create car_models and bike_models dictionaries
+vehicle_data = get_vehicle_data()
+car_models = {}
+bike_models = {}
+
+# Populate car_models
+for brand in vehicle_data["Car"]["Brands"]:
+    car_models[brand] = []
+    for category in vehicle_data["Car"]["Categories"]:
+        car_models[brand].extend(vehicle_data["Car"]["Models"][category])
+
+# Populate bike_models
+for brand in vehicle_data["Motorcycle"]["Brands"]:
+    bike_models[brand] = []
+    for category in vehicle_data["Motorcycle"]["Categories"]:
+        bike_models[brand].extend(vehicle_data["Motorcycle"]["Models"][category])
 
 def search_vehicle(query, vehicle_type=None):
     """Search for vehicles based on query string and optional vehicle type"""
@@ -547,105 +843,101 @@ def show_initial_booking_form():
 def show_car_service_form():
     st.header("Car Service Booking")
     
-    # Get the initial booking details from session state
+    # Get booking details from session state
     booking_details = st.session_state.get('booking_details', {})
-    if not booking_details:
-        st.error("Please start from the initial booking form")
-        if st.button("Go Back"):
-            st.session_state.current_page = 'book_service'
-            st.rerun()
-        return
     
-    with st.form("car_service_form"):
-        # Get vehicle data
-        vehicle_data = get_vehicle_data()
-        repair_types = get_repair_types()
+    # Vehicle Brand and Model Selection
+    vehicle_brand = st.selectbox("Select Car Brand", sorted(car_models.keys()))
+    vehicle_model = st.selectbox("Select Car Model", sorted(car_models[vehicle_brand]))
+    
+    # Service Type Selection
+    service_type = st.selectbox("Service Type", ["Regular Maintenance", "Repair", "Washing"])
+    
+    # Auto-assist feature for service recommendations
+    if st.button("Get AI Service Recommendations"):
+        with st.spinner("Getting personalized recommendations..."):
+            # Get service history from database
+            conn = sqlite3.connect('vehicle_service.db')
+            service_history = pd.read_sql_query(
+                "SELECT * FROM bookings WHERE vehicle_type='Car' AND vehicle_number=?",
+                conn,
+                params=(booking_details.get('vehicle_number', ''),)
+            ).to_dict('records')
+            conn.close()
+            
+            recommendations = get_service_recommendations(
+                "Car",
+                f"{vehicle_brand} {vehicle_model}",
+                service_history
+            )
+            st.info("AI Service Recommendations:")
+            st.write(recommendations)
+    
+    # Service Items Selection based on service type
+    service_items = []
+    if service_type == "Regular Maintenance":
+        service_items = st.multiselect(
+            "Select Maintenance Items",
+            ["Engine Oil Change", "Oil Filter Replacement", "Air Filter Cleaning", 
+             "Brake Check", "Wheel Alignment", "Battery Check", "Tire Rotation"]
+        )
+    elif service_type == "Repair":
+        # Add symptoms input for AI diagnosis
+        symptoms = st.text_area("Describe the issues or symptoms you're experiencing")
+        if symptoms:
+            if st.button("Get AI Diagnosis"):
+                with st.spinner("Analyzing symptoms..."):
+                    vehicle_details = {
+                        "brand": vehicle_brand,
+                        "model": vehicle_model,
+                        "last_service": booking_details.get('last_service_date'),
+                        "last_service_km": booking_details.get('last_service_km')
+                    }
+                    diagnosis = get_diagnostic_insights(symptoms, vehicle_details)
+                    st.info("AI Diagnostic Insights:")
+                    st.write(diagnosis)
         
-        # Add search functionality
-        search_query = st.text_input("Search for your vehicle (brand, category, or model)")
-        if search_query:
-            search_results = search_vehicle(search_query, "Car")
-            if search_results:
-                st.write("Search Results:")
-                for result in search_results:
-                    st.write(f"- {result['brand']} {result['model']} ({result['category']})")
-            else:
-                st.info("No matching vehicles found")
-        
-        # Brand Selection
-        vehicle_brand = st.selectbox("Brand", vehicle_data["Car"]["Brands"])
-        
-        # Category Selection
-        vehicle_category = st.selectbox("Category", vehicle_data["Car"]["Categories"])
-        
-        # Model Selection
-        models = vehicle_data["Car"]["Models"][vehicle_category]
-        vehicle_model = st.selectbox("Model", models)
-        
-        service_type = st.selectbox("Service Type", ["Regular Maintenance", "Repair", "Washing", "Inspection", "Custom"])
-        
-        # Dynamic service options based on type
-        if service_type == "Regular Maintenance":
-            service_items = st.multiselect("Maintenance Items", [
-                "Engine Oil Change",
-                "Oil Filter Replacement",
-                "Air Filter Cleaning/Replacement",
-                "Coolant Check/Top-up",
-                "Brake Fluid Check",
-                "Wheel Alignment",
-                "Wheel Balancing",
-                "Tire Rotation",
-                "Battery Check",
-                "AC Service",
-                "General Inspection"
-            ])
-        elif service_type == "Repair":
-            repair_categories = list(repair_types["Car"].keys())
-            selected_repair_category = st.selectbox("Repair Category", repair_categories)
-            repair_items = repair_types["Car"][selected_repair_category]
-            service_items = st.multiselect("Repair Items", repair_items)
-        elif service_type == "Washing":
-            service_items = st.multiselect("Washing Services", [
-                "Basic Wash (Exterior)",
-                "Premium Wash (Exterior + Interior)",
-                "Deep Cleaning",
-                "Interior Vacuuming",
-                "Dashboard Polishing",
-                "Seat Cleaning",
-                "Carpet Cleaning",
-                "Waxing & Polishing",
-                "Ceramic Coating",
-                "Underbody Wash"
-            ])
-        elif service_type == "Inspection":
-            service_items = st.multiselect("Inspection Items", [
-                "Pre-purchase Inspection",
-                "Annual Safety Check",
-                "Insurance Inspection",
-                "Warranty Inspection",
-                "Performance Check",
-                "Emission Test",
-                "Brake System Inspection",
-                "Suspension Inspection",
-                "Electrical System Check",
-                "AC System Check"
-            ])
-        
-        booking_date = st.date_input("Preferred Date", min_value=datetime.today())
-        time_slot = st.selectbox("Preferred Time Slot", 
-                               ["09:00 AM - 11:00 AM", 
-                                "11:00 AM - 01:00 PM",
-                                "02:00 PM - 04:00 PM",
-                                "04:00 PM - 06:00 PM"])
-        
-        additional_notes = st.text_area("Additional Notes (Optional)")
-        
+        service_items = st.multiselect(
+            "Select Repair Items",
+            ["Engine Repair", "Transmission Service", "Brake System Repair",
+             "Suspension Work", "Electrical Systems", "AC Service & Repair"]
+        )
+    elif service_type == "Washing":
+        service_items = st.multiselect(
+            "Select Washing Package",
+            ["Basic Wash", "Premium Wash", "Deep Cleaning"]
+        )
+    
+    # Time Slot Selection
+    time_slot = st.selectbox("Preferred Time Slot", 
+                           ["09:00 AM - 11:00 AM", 
+                            "11:00 AM - 01:00 PM",
+                            "02:00 PM - 04:00 PM",
+                            "04:00 PM - 06:00 PM"])
+    
+    additional_notes = st.text_area("Additional Notes (Optional)")
+    
+    # Auto-assist for additional notes
+    if additional_notes:
+        if st.button("Get AI Suggestions"):
+            with st.spinner("Analyzing your notes..."):
+                context = {
+                    "vehicle": f"{vehicle_brand} {vehicle_model}",
+                    "service_type": service_type,
+                    "selected_items": service_items
+                }
+                suggestions = get_auto_assist_response(additional_notes, context)
+                st.info("AI Suggestions:")
+                st.write(suggestions)
+    
+    # Booking form
+    with st.form("car_booking_form"):
         submit_booking = st.form_submit_button("Book Service")
         
         if submit_booking:
             try:
                 # Prepare service description
-                service_description = f"Vehicle: {vehicle_brand} {vehicle_model} ({vehicle_category})\n"
+                service_description = f"Vehicle: {vehicle_brand} {vehicle_model}\n"
                 if booking_details.get('last_service_date'):
                     service_description += f"Last Service: {booking_details['last_service_date']}, {booking_details['last_service_km']} KM\n"
                 if service_items:
@@ -655,160 +947,180 @@ def show_car_service_form():
                 
                 conn = sqlite3.connect('vehicle_service.db')
                 c = conn.cursor()
+                
+                # Insert booking into database
                 c.execute("""
-                    INSERT INTO bookings 
-                    (booking_id, customer_name, vehicle_type, vehicle_number, 
-                     service_type, booking_date, time_slot, status, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (str(uuid.uuid4()), booking_details['customer_name'], 
-                      f"Car - {vehicle_brand} {vehicle_model}", 
-                      booking_details['vehicle_number'], service_type, 
-                      booking_date, time_slot, "Pending", service_description))
+                    INSERT INTO bookings (
+                        booking_id, customer_name, vehicle_type, vehicle_number,
+                        service_type, booking_date, time_slot, status, description,
+                        last_service_date, last_service_km, service_items, additional_notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()),
+                    booking_details['customer_name'],
+                    'Car',
+                    booking_details['vehicle_number'],
+                    service_type,
+                    datetime.now().date(),
+                    time_slot,
+                    'Pending',
+                    service_description,
+                    booking_details.get('last_service_date'),
+                    booking_details.get('last_service_km'),
+                    ','.join(service_items) if service_items else None,
+                    additional_notes
+                ))
+                
                 conn.commit()
                 conn.close()
+                
                 st.success("Service booked successfully!")
-                
-                # Clear session state and return to home
-                st.session_state.booking_details = None
-                st.session_state.current_page = 'home'
-                st.rerun()
-                
-        except Exception as e:
-                st.error(f"An error occurred while booking: {str(e)}")
-                conn.rollback()
-            finally:
-                if 'conn' in locals():
-                    conn.close()
-
-def show_bike_service_form():
-    st.header("Motorcycle Service Booking")
-    
-    # Get the initial booking details from session state
-    booking_details = st.session_state.get('booking_details', {})
-    if not booking_details:
-        st.error("Please start from the initial booking form")
-        if st.button("Go Back"):
-            st.session_state.current_page = 'book_service'
-            st.rerun()
-            return
-    
-    with st.form("bike_service_form"):
-        # Get vehicle data
-        vehicle_data = get_vehicle_data()
-        repair_types = get_repair_types()
-        
-        # Add search functionality
-        search_query = st.text_input("Search for your vehicle (brand, category, or model)")
-        if search_query:
-            search_results = search_vehicle(search_query, "Motorcycle")
-            if search_results:
-                st.write("Search Results:")
-                for result in search_results:
-                    st.write(f"- {result['brand']} {result['model']} ({result['category']})")
-            else:
-                st.info("No matching vehicles found")
-        
-        # Brand Selection
-        vehicle_brand = st.selectbox("Brand", vehicle_data["Motorcycle"]["Brands"])
-        
-        # Category Selection
-        vehicle_category = st.selectbox("Category", vehicle_data["Motorcycle"]["Categories"])
-        
-        # Model Selection
-        models = vehicle_data["Motorcycle"]["Models"][vehicle_category]
-        vehicle_model = st.selectbox("Model", models)
-        
-        service_type = st.selectbox("Service Type", ["Regular Maintenance", "Repair", "Washing", "Inspection", "Custom"])
-        
-        # Dynamic service options based on type
-        if service_type == "Regular Maintenance":
-            service_items = st.multiselect("Maintenance Items", [
-                "Engine Oil Change",
-                "Oil Filter Replacement",
-                "Air Filter Cleaning",
-                "Chain Cleaning and Lubrication",
-                "Brake Pad Check",
-                "Clutch Adjustment",
-                "Spark Plug Check/Replacement",
-                "Battery Check",
-                "General Inspection"
-            ])
-        elif service_type == "Repair":
-            repair_categories = list(repair_types["Motorcycle"].keys())
-            selected_repair_category = st.selectbox("Repair Category", repair_categories)
-            repair_items = repair_types["Motorcycle"][selected_repair_category]
-            service_items = st.multiselect("Repair Items", repair_items)
-        elif service_type == "Washing":
-            service_items = st.multiselect("Washing Services", [
-                "Basic Wash",
-                "Premium Wash",
-                "Chain Cleaning",
-                "Deep Cleaning",
-                "Polishing",
-                "Ceramic Coating",
-                "Engine Cleaning"
-            ])
-        elif service_type == "Inspection":
-            service_items = st.multiselect("Inspection Items", [
-                "Pre-purchase Inspection",
-                "Annual Safety Check",
-                "Insurance Inspection",
-                "Warranty Inspection",
-                "Performance Check",
-                "Emission Test",
-                "Brake System Inspection",
-                "Suspension Inspection",
-                "Electrical System Check"
-            ])
-        
-        booking_date = st.date_input("Preferred Date", min_value=datetime.today())
-        time_slot = st.selectbox("Preferred Time Slot", 
-                               ["09:00 AM - 11:00 AM", 
-                                "11:00 AM - 01:00 PM",
-                                "02:00 PM - 04:00 PM",
-                                "04:00 PM - 06:00 PM"])
-        
-        additional_notes = st.text_area("Additional Notes (Optional)")
-        
-        submit_booking = st.form_submit_button("Book Service")
-        
-        if submit_booking:
-            try:
-                # Prepare service description
-                service_description = f"Vehicle: {vehicle_brand} {vehicle_model} ({vehicle_category})\n"
-                if booking_details.get('last_service_date'):
-                    service_description += f"Last Service: {booking_details['last_service_date']}, {booking_details['last_service_km']} KM\n"
-                if service_items:
-                    service_description += f"Service Items: {', '.join(service_items)}\n"
-                if additional_notes:
-                    service_description += f"Additional Notes: {additional_notes}"
-                
-                conn = sqlite3.connect('vehicle_service.db')
-                c = conn.cursor()
-                c.execute("""
-                    INSERT INTO bookings 
-                    (booking_id, customer_name, vehicle_type, vehicle_number, 
-                     service_type, booking_date, time_slot, status, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (str(uuid.uuid4()), booking_details['customer_name'], 
-                      f"Motorcycle - {vehicle_brand} {vehicle_model}", 
-                      booking_details['vehicle_number'], service_type, 
-                      booking_date, time_slot, "Pending", service_description))
-                conn.commit()
-                conn.close()
-                st.success("Service booked successfully!")
-                
-                # Clear session state and return to home
-                st.session_state.booking_details = None
                 st.session_state.current_page = 'home'
                 st.rerun()
                 
             except Exception as e:
-                st.error(f"An error occurred while booking: {str(e)}")
-                conn.rollback()
-            finally:
-                if 'conn' in locals():
-                    conn.close()
+                st.error(f"Error booking service: {str(e)}")
+
+def show_bike_service_form():
+    st.header("Motorcycle Service Booking")
+    
+    # Get booking details from session state
+    booking_details = st.session_state.get('booking_details', {})
+    
+    # Vehicle Brand and Model Selection
+    vehicle_brand = st.selectbox("Select Bike Brand", sorted(bike_models.keys()))
+    vehicle_model = st.selectbox("Select Bike Model", sorted(bike_models[vehicle_brand]))
+    
+    # Service Type Selection
+    service_type = st.selectbox("Service Type", ["Regular Maintenance", "Repair", "Washing"])
+    
+    # Auto-assist feature for service recommendations
+    if st.button("Get AI Service Recommendations"):
+        with st.spinner("Getting personalized recommendations..."):
+            # Get service history from database
+            conn = sqlite3.connect('vehicle_service.db')
+            service_history = pd.read_sql_query(
+                "SELECT * FROM bookings WHERE vehicle_type='Motorcycle' AND vehicle_number=?",
+                conn,
+                params=(booking_details.get('vehicle_number', ''),)
+            ).to_dict('records')
+            conn.close()
+            
+            recommendations = get_service_recommendations(
+                "Motorcycle",
+                f"{vehicle_brand} {vehicle_model}",
+                service_history
+            )
+            st.info("AI Service Recommendations:")
+            st.write(recommendations)
+    
+    # Service Items Selection based on service type
+    service_items = []
+    if service_type == "Regular Maintenance":
+        service_items = st.multiselect(
+            "Select Maintenance Items",
+            ["Engine Oil Change", "Oil Filter Replacement", "Air Filter Cleaning",
+             "Chain Cleaning", "Brake Adjustment", "Battery Check", "Tire Pressure Check"]
+        )
+    elif service_type == "Repair":
+        # Add symptoms input for AI diagnosis
+        symptoms = st.text_area("Describe the issues or symptoms you're experiencing")
+        if symptoms:
+            if st.button("Get AI Diagnosis"):
+                with st.spinner("Analyzing symptoms..."):
+                    vehicle_details = {
+                        "brand": vehicle_brand,
+                        "model": vehicle_model,
+                        "last_service": booking_details.get('last_service_date'),
+                        "last_service_km": booking_details.get('last_service_km')
+                    }
+                    diagnosis = get_diagnostic_insights(symptoms, vehicle_details)
+                    st.info("AI Diagnostic Insights:")
+                    st.write(diagnosis)
+        
+        service_items = st.multiselect(
+            "Select Repair Items",
+            ["Engine Work", "Chain & Sprocket Replacement", "Clutch Repair",
+             "Brake System Service", "Electrical Repairs", "Tire Services"]
+        )
+    elif service_type == "Washing":
+        service_items = st.multiselect(
+            "Select Washing Package",
+            ["Basic Wash", "Premium Wash", "Deep Cleaning"]
+        )
+    
+    # Time Slot Selection
+    time_slot = st.selectbox("Preferred Time Slot", 
+                           ["09:00 AM - 11:00 AM", 
+                            "11:00 AM - 01:00 PM",
+                            "02:00 PM - 04:00 PM",
+                            "04:00 PM - 06:00 PM"])
+    
+    additional_notes = st.text_area("Additional Notes (Optional)")
+    
+    # Auto-assist for additional notes
+    if additional_notes:
+        if st.button("Get AI Suggestions"):
+            with st.spinner("Analyzing your notes..."):
+                context = {
+                    "vehicle": f"{vehicle_brand} {vehicle_model}",
+                    "service_type": service_type,
+                    "selected_items": service_items
+                }
+                suggestions = get_auto_assist_response(additional_notes, context)
+                st.info("AI Suggestions:")
+                st.write(suggestions)
+    
+    # Booking form
+    with st.form("bike_booking_form"):
+        submit_booking = st.form_submit_button("Book Service")
+        
+        if submit_booking:
+            try:
+                # Prepare service description
+                service_description = f"Vehicle: {vehicle_brand} {vehicle_model}\n"
+                if booking_details.get('last_service_date'):
+                    service_description += f"Last Service: {booking_details['last_service_date']}, {booking_details['last_service_km']} KM\n"
+                if service_items:
+                    service_description += f"Service Items: {', '.join(service_items)}\n"
+                if additional_notes:
+                    service_description += f"Additional Notes: {additional_notes}"
+                
+                conn = sqlite3.connect('vehicle_service.db')
+                c = conn.cursor()
+                
+                # Insert booking into database
+                c.execute("""
+                    INSERT INTO bookings (
+                        booking_id, customer_name, vehicle_type, vehicle_number,
+                        service_type, booking_date, time_slot, status, description,
+                        last_service_date, last_service_km, service_items, additional_notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()),
+                    booking_details['customer_name'],
+                    'Motorcycle',
+                    booking_details['vehicle_number'],
+                    service_type,
+                    datetime.now().date(),
+                    time_slot,
+                    'Pending',
+                    service_description,
+                    booking_details.get('last_service_date'),
+                    booking_details.get('last_service_km'),
+                    ','.join(service_items) if service_items else None,
+                    additional_notes
+                ))
+                
+                conn.commit()
+                conn.close()
+                
+                st.success("Service booked successfully!")
+                st.session_state.current_page = 'home'
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error booking service: {str(e)}")
 
 def show_customer_dashboard():
     st.title("Vehicle Service System")
@@ -903,19 +1215,53 @@ def show_customer_dashboard():
         # Display service highlights at the bottom
         st.markdown("---")
         st.subheader("Our Services")
-        highlights_col1, highlights_col2 = st.columns(2)
+        highlights_col1, highlights_col2, highlights_col3 = st.columns(3)
         
         with highlights_col1:
             st.markdown("### 🚗 Car Services")
             st.write("- Regular Maintenance")
             st.write("- Repair Services")
             st.write("- Body Work")
+            st.write("- Washing Services")
+            st.write("  • Basic Wash")
+            st.write("  • Premium Wash")
+            st.write("  • Deep Cleaning")
+            st.write("  • Interior Detailing")
         
         with highlights_col2:
             st.markdown("### 🏍️ Bike Services")
             st.write("- Periodic Services")
             st.write("- Repairs & Parts")
             st.write("- Performance Tuning")
+            st.write("- Washing Services")
+            st.write("  • Basic Wash")
+            st.write("  • Premium Wash")
+            st.write("  • Deep Cleaning")
+            st.write("  • Engine Cleaning")
+        
+        with highlights_col3:
+            st.markdown("### 💧 Washing Packages")
+            st.write("#### Car Packages")
+            st.write("- Basic Wash: ₹500")
+            st.write("  • Exterior Wash")
+            st.write("  • Tire Cleaning")
+            st.write("  • Basic Interior")
+            st.write("- Premium Wash: ₹1,000")
+            st.write("  • All Basic Services")
+            st.write("  • Interior Detailing")
+            st.write("  • Waxing")
+            st.write("- Deep Cleaning: ₹2,000")
+            st.write("  • All Premium Services")
+            st.write("  • Engine Bay Cleaning")
+            st.write("  • Ceramic Coating")
+            st.write("#### Bike Packages")
+            st.write("- Basic Wash: ₹200")
+            st.write("  • Exterior Wash")
+            st.write("  • Chain Cleaning")
+            st.write("- Premium Wash: ₹500")
+            st.write("  • All Basic Services")
+            st.write("  • Deep Cleaning")
+            st.write("  • Polishing")
     
     elif st.session_state.current_page == 'book_service':
         show_initial_booking_form()
@@ -943,7 +1289,7 @@ def show_customer_dashboard():
         
         # Car Services
         st.subheader("🚗 Car Services")
-        car_services_tab1, car_services_tab2 = st.tabs(["Regular Maintenance", "Repairs"])
+        car_services_tab1, car_services_tab2, car_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
         
         with car_services_tab1:
             st.markdown("""
@@ -978,10 +1324,35 @@ def show_customer_dashboard():
             
             *Actual costs will be provided after inspection*
             """)
+            
+        with car_services_tab3:
+            st.markdown("""
+            #### Basic Wash Package (₹500)
+            - Exterior Wash
+            - Tire Cleaning
+            - Basic Interior Cleaning
+            - Window Cleaning
+            
+            #### Premium Wash Package (₹1,000)
+            - All Basic Wash Services
+            - Interior Detailing
+            - Dashboard Polishing
+            - Seat Cleaning
+            - Carpet Cleaning
+            - Waxing & Polishing
+            
+            #### Deep Cleaning Package (₹2,000)
+            - All Premium Wash Services
+            - Engine Bay Cleaning
+            - Underbody Wash
+            - Ceramic Coating
+            - Leather Treatment
+            - Odor Removal
+            """)
         
         # Bike Services
         st.subheader("🏍️ Bike Services")
-        bike_services_tab1, bike_services_tab2 = st.tabs(["Regular Maintenance", "Repairs"])
+        bike_services_tab1, bike_services_tab2, bike_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
         
         with bike_services_tab1:
             st.markdown("""
@@ -1016,6 +1387,235 @@ def show_customer_dashboard():
             
             *Actual costs will be provided after inspection*
             """)
+            
+        with bike_services_tab3:
+            st.markdown("""
+            #### Basic Wash Package (₹200)
+            - Exterior Wash
+            - Chain Cleaning
+            - Basic Inspection
+            
+            #### Premium Wash Package (₹500)
+            - All Basic Wash Services
+            - Deep Cleaning
+            - Polishing
+            - Chain Lubrication
+            - Tire Dressing
+            
+            #### Deep Cleaning Package (₹1,000)
+            - All Premium Wash Services
+            - Engine Cleaning
+            - Metal Polishing
+            - Ceramic Coating
+            - Paint Protection
+            """)
+
+def show_service_calculator():
+    st.header("Service Cost Calculator")
+    
+    # Vehicle Type Selection
+    vehicle_type = st.selectbox("Select Vehicle Type", ["Car", "Motorcycle"])
+    
+    # Service Type Selection
+    service_type = st.selectbox("Select Service Type", ["Regular Maintenance", "Repair", "Washing", "Inspection"])
+    
+    # Get repair types for the selected vehicle type
+    repair_types = get_repair_types()
+    
+    # Calculate base cost based on vehicle type and service type
+    base_cost = 0
+    if vehicle_type == "Car":
+        if service_type == "Regular Maintenance":
+            base_cost = 2000
+        elif service_type == "Washing":
+            base_cost = 500
+        elif service_type == "Inspection":
+            base_cost = 1000
+    else:  # Motorcycle
+        if service_type == "Regular Maintenance":
+            base_cost = 1000
+        elif service_type == "Washing":
+            base_cost = 200
+        elif service_type == "Inspection":
+            base_cost = 500
+    
+    # Additional costs based on service type
+    additional_cost = 0
+    
+    if service_type == "Regular Maintenance":
+        st.subheader("Maintenance Items")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if vehicle_type == "Car":
+                items = [
+                    ("Engine Oil Change", 500),
+                    ("Oil Filter Replacement", 300),
+                    ("Air Filter Cleaning", 400),
+                    ("Brake Check", 600),
+                    ("Wheel Alignment", 800)
+                ]
+            else:
+                items = [
+                    ("Engine Oil Change", 300),
+                    ("Oil Filter Replacement", 200),
+                    ("Air Filter Cleaning", 250),
+                    ("Chain Cleaning", 200),
+                    ("Brake Adjustment", 300)
+                ]
+            
+            for item, cost in items:
+                if st.checkbox(f"{item} (₹{cost})"):
+                    additional_cost += cost
+    
+    elif service_type == "Repair":
+        st.subheader("Repair Items")
+        repair_categories = list(repair_types[vehicle_type].keys())
+        selected_category = st.selectbox("Select Repair Category", repair_categories)
+        
+        repair_items = repair_types[vehicle_type][selected_category]
+        selected_items = st.multiselect("Select Repair Items", repair_items)
+        
+        # Add cost for each selected repair item
+        for item in selected_items:
+            if "Engine" in item:
+                additional_cost += 5000
+            elif "Transmission" in item:
+                additional_cost += 4000
+            elif "Brake" in item:
+                additional_cost += 2000
+            elif "Suspension" in item:
+                additional_cost += 3000
+            elif "Electrical" in item:
+                additional_cost += 1500
+            elif "AC" in item:
+                additional_cost += 2500
+            else:
+                additional_cost += 1000
+    
+    elif service_type == "Washing":
+        st.subheader("Washing Services")
+        if vehicle_type == "Car":
+            packages = [
+                ("Basic Wash", 500, ["Exterior Wash", "Tire Cleaning", "Basic Interior"]),
+                ("Premium Wash", 1000, ["All Basic Services", "Interior Detailing", "Waxing"]),
+                ("Deep Cleaning", 2000, ["All Premium Services", "Engine Bay Cleaning", "Ceramic Coating"])
+            ]
+        else:
+            packages = [
+                ("Basic Wash", 200, ["Exterior Wash", "Chain Cleaning"]),
+                ("Premium Wash", 500, ["All Basic Services", "Deep Cleaning", "Polishing"]),
+                ("Deep Cleaning", 1000, ["All Premium Services", "Engine Cleaning", "Ceramic Coating"])
+            ]
+        
+        selected_package = st.radio("Select Washing Package", [p[0] for p in packages])
+        for package, cost, _ in packages:
+            if package == selected_package:
+                additional_cost = cost
+                break
+    
+    # Calculate total cost
+    total_cost = base_cost + additional_cost
+    
+    # Display cost breakdown
+    st.markdown("---")
+    st.subheader("Cost Breakdown")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write(f"Base Cost: ₹{base_cost}")
+        st.write(f"Additional Services: ₹{additional_cost}")
+    
+    with col2:
+        st.markdown(f"### Total Cost: ₹{total_cost}")
+    
+    # Disclaimer
+    st.info("Note: This is an estimated cost. Final cost may vary based on actual service requirements and parts needed.")
+
+def show_chatbot():
+    st.header("Chat Support")
+    
+    # Initialize chat history in session state if it doesn't exist
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    
+    # Display chat history
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    
+    # Chat input
+    if prompt := st.chat_input("How can I help you today?"):
+        # Add user message to chat history
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        
+        # Display user message
+        with st.chat_message("user"):
+            st.write(prompt)
+        
+        # Generate response based on common queries and troubleshooting
+        response = generate_chat_response(prompt)
+        
+        # Add assistant response to chat history
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+        
+        # Display assistant response
+        with st.chat_message("assistant"):
+            st.write(response)
+
+def generate_chat_response(prompt):
+    """Generate a response based on the user's prompt"""
+    prompt = prompt.lower()
+    
+    # Common queries and their responses
+    responses = {
+        "service": "We offer various services including regular maintenance, repairs, washing, and inspections. You can find detailed information in the 'Service Information' section.",
+        "price": "Our service prices vary based on the type of service and vehicle. You can use the 'Cost Calculator' to get an estimate for your specific needs.",
+        "booking": "To book a service, click on 'Book Service' from the home page. You'll need to provide your vehicle details and preferred service date.",
+        "time": "Our service center is open from 8:00 AM to 9:00 PM, Monday through Saturday. We're closed on Sundays.",
+        "location": "We are located at 123 Service Street, Auto City. You can find us easily using any map application.",
+        "contact": "You can reach us at:\nPhone: 123-456-7890\nEmail: support@vehicleservice.com",
+        "warranty": "We provide a 3-month warranty on all our services. For more details, please check our warranty policy in the Service Information section.",
+        "payment": "We accept cash, credit/debit cards, and digital payments. Payment is due upon service completion.",
+        "cancel": "You can cancel your booking up to 24 hours before the scheduled time. Please contact our support team for cancellation.",
+        "status": "To check your service status, go to 'Service Status' from the home page and enter your booking ID."
+    }
+    
+    # Check for keywords in the prompt
+    for keyword, response in responses.items():
+        if keyword in prompt:
+            return response
+    
+    # If no common query matches, try to provide troubleshooting assistance
+    try:
+        troubleshooting_prompt = f"""
+        As an automotive troubleshooting assistant, provide a simple solution for the following issue:
+        
+        User Query: {prompt}
+        
+        Please provide your response in this format:
+        
+        Quick Diagnosis:\n\n
+        • [Brief assessment of the problem]\n\n
+        
+        Simple Solutions:\n\n
+        • [Step 1 - Most basic solution]\n\n
+        • [Step 2 - If step 1 doesn't work]\n\n
+        
+        When to Visit Service Center:\n\n
+        • [Warning signs that indicate professional help is needed]\n\n
+        
+        Keep the response brief, practical, and easy to understand.
+        Focus on simple solutions that can be done at home.
+        """
+        
+        response = model.generate_content(troubleshooting_prompt)
+        if response and hasattr(response, 'text'):
+            return response.text
+        else:
+            return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
+    except Exception as e:
+        return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
 
 def main():
     init_db()
