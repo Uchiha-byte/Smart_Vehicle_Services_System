@@ -1,150 +1,126 @@
-# Vehicle Service Management System
+# Vehicle Services System
 
-A modern, AI-powered vehicle service management system built with Python and Streamlit. This system provides a comprehensive solution for managing vehicle services, from customer bookings to service tracking and inventory management.
+A comprehensive vehicle service management system built with Streamlit, featuring both customer and admin interfaces.
 
 ## Features
 
-### Admin Dashboard
-- Staff Management (CRUD operations)
-- Inventory Tracking
-- Service Booking Management
-- Analytics Dashboard
-- Real-time Service Status Updates
-- **Auto-Assist Feature**: Leverage AI to provide staff with intelligent suggestions and insights.
+### Customer Features
+- **Service Booking**
+  - Easy booking process for cars and motorcycles
+  - Multiple service types (Regular Maintenance, Repair, Washing)
+  - Time slot selection
+  - Service history tracking
+  - Cost calculator
 
-### Customer Portal
-- AI-Powered Problem Diagnosis using Google Gemini
-- Service Booking System
-- Real-time Chat Support
-- Service History Tracking
-- Maintenance Reminders
-- **Auto-Assist Feature**: Get personalized service recommendations and insights.
+- **Service Information**
+  - Detailed service packages
+  - Pricing information
+  - Service descriptions
+  - Maintenance recommendations
 
-## Prerequisites
+- **Booking Management**
+  - View booking history
+  - Track service status
+  - Cancel or modify bookings
+  - Service cost estimation
 
-- Python 3.8 or higher
-- Google Gemini API key
-- Git
+- **AI-Powered Assistance**
+  - Service recommendations
+  - Diagnostic insights
+  - Chat support
+  - Maintenance tips
 
-## Setup Instructions
+### Admin Features
+- **Staff Management**
+  - Add/remove staff members
+  - Track staff duties
+  - Manage staff information
+
+- **Inventory Management**
+  - Add/update/delete inventory items
+  - Bulk import via CSV
+  - Stock alerts
+  - Inventory analytics
+  - Search and filter functionality
+  - Export to CSV
+
+- **Booking Management**
+  - View all bookings
+  - Update booking status
+  - Manage service schedules
+
+## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Uchiha-byte/Smart_Vehicle_Services_System.git
-cd Smart_Vehicle_Services_System
+git clone https://github.com/yourusername/Vehicle_Services_System.git
+cd Vehicle_Services_System
 ```
 
-2. Create and activate a virtual environment:
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# Linux/Mac
-python -m venv venv
-source venv/bin/activate
-```
-
-3. Install dependencies:
+2. Install required packages:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Create an `api.env` file in the root directory with your Gemini API key:
+3. Create an `api.env` file in the root directory and add your Gemini API key:
 ```
 GEMINI_API_KEY=your_api_key_here
 ```
 
-5. Run the application:
+4. Run the application:
 ```bash
 streamlit run app.py
 ```
 
-## Default Login Credentials
+## Database Structure
 
-### Admin
-- Username: admin
-- Password: admin123
+### Main Database (vehicle_service.db)
+- **staff**: Staff information and management
+- **bookings**: Service booking records
 
-### Customer
-- Username: customer
-- Password: customer123
+### Inventory Database (inventory.db)
+- **inventory**: Stock items and their details
+- **inventory_history**: Track changes to inventory items
 
-## Project Structure
+## Usage
 
-```
-vehicle_service_system/
-├── app.py                # Main application
-├── pages/               # Streamlit pages
-│   ├── admin/          # Admin dashboard pages
-│   └── customer/       # Customer portal pages
-├── static/             # Static files and assets
-├── vehicle_service.db  # SQLite database
-├── requirements.txt    # Project dependencies
-├── api.env            # Environment variables
-└── venv/              # Virtual environment
-```
+### Customer Access
+1. Click "Customer Access" on the home page
+2. Choose from available services:
+   - Book Service
+   - View Booking History
+   - Check Service Status
+   - Use Cost Calculator
+   - Access Chat Support
+   - View Service Information
 
-## Technologies Used
+### Admin Access
+1. Click "Admin Access" on the home page
+2. Access different management sections:
+   - Staff Management
+   - Inventory Management
+   - Booking Management
+   - AI Assistant
 
-- **Python 3.8+**: Core programming language
-- **Streamlit 1.45.1**: Web application framework
-- **Google Gemini AI**: AI-powered problem diagnosis and auto-assist feature
-- **Pandas 2.2.3**: Data manipulation and analysis
-- **Plotly 5.19.0**: Interactive data visualization
-- **Pillow 11.2.1**: Image processing
-- **Python-dotenv 1.0.1**: Environment variable management
-- **SQLite**: Database management
+## Inventory Management
 
-## Features in Detail
+### Adding Items
+1. Go to Admin Dashboard > Inventory Management
+2. Use "Add Items" tab to:
+   - Add single items manually
+   - Import multiple items via CSV
 
-### Admin Side
-
-1. **Staff Management**
-   - Add/Edit/Remove staff members
-   - Track staff attendance
-   - Manage staff schedules
-   - View performance metrics
-
-2. **Inventory Management**
-   - Real-time parts inventory tracking
-   - Low stock alerts
-   - Purchase order generation
-   - Inventory usage analytics
-
-3. **Service Management**
-   - View and manage service bookings
-   - Update service status in real-time
-   - Generate detailed service reports
-   - Track customer service history
-   - **Auto-Assist**: Use AI to provide staff with insights and suggestions for improving service efficiency.
-
-### Customer Side
-
-1. **Service Booking**
-   - AI-powered vehicle problem diagnosis
-   - Real-time service slot availability
-   - Accurate service cost estimation
-   - Instant booking confirmation
-   - **Auto-Assist**: Receive personalized service recommendations based on vehicle history and preferences.
-
-2. **Support System**
-   - 24/7 AI-powered chatbot support
-   - Emergency assistance requests
-   - Complete service history access
-   - Personalized maintenance tips
-
-## Security Features
-
-- Secure password hashing
-- Environment variable protection
-- Session management
-- Input validation and sanitization
+### Managing Inventory
+- Search and filter items
+- Update quantities and prices
+- View stock alerts
+- Monitor inventory analytics
+- Export inventory data
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
@@ -153,6 +129,8 @@ vehicle_service_system/
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## Acknowledgments
 
-For support, please open an issue in the GitHub repository or contact the development team. 
+- Streamlit for the web framework
+- Google Gemini AI for AI-powered features
+- SQLite for database management 

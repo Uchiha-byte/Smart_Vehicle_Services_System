@@ -8,6 +8,7 @@ import pandas as pd
 import uuid
 import google.generativeai as genai
 from typing import Dict, List, Optional
+import time
 
 # Load environment variables
 load_dotenv('api.env')
@@ -215,24 +216,193 @@ with open('static/style.css') as f:
 
 # Initialize database
 def init_db():
+    # Main database for other features
     conn = sqlite3.connect('vehicle_service.db')
     c = conn.cursor()
     
-    # Create tables
+    # Create staff and bookings tables
     c.execute('''CREATE TABLE IF NOT EXISTS staff
-                 (staff_id TEXT PRIMARY KEY, name TEXT, duty TEXT, salary REAL)''')
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS inventory
-                 (part_id TEXT PRIMARY KEY, name TEXT, quantity INTEGER, price REAL, status TEXT)''')
+                 (staff_id TEXT PRIMARY KEY,
+                  name TEXT NOT NULL,
+                  duty TEXT NOT NULL,
+                  salary REAL NOT NULL)''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS bookings
-                 (booking_id TEXT PRIMARY KEY, customer_name TEXT, vehicle_type TEXT,
-                  vehicle_number TEXT, service_type TEXT, booking_date DATE,
-                  time_slot TEXT, status TEXT, description TEXT, last_service_date DATE,
-                  last_service_km INTEGER, service_items TEXT, additional_notes TEXT)''')
+                 (booking_id TEXT PRIMARY KEY,
+                  customer_name TEXT NOT NULL,
+                  vehicle_type TEXT NOT NULL,
+                  vehicle_number TEXT NOT NULL,
+                  service_type TEXT NOT NULL,
+                  booking_date DATE NOT NULL,
+                  time_slot TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  description TEXT,
+                  last_service_date DATE,
+                  last_service_km INTEGER,
+                  service_items TEXT,
+                  additional_notes TEXT)''')
     
     conn.commit()
     conn.close()
+    
+    # Separate database for inventory
+    init_inventory_db()
+
+def init_inventory_db():
+    """Initialize the inventory database"""
+    conn = sqlite3.connect('inventory.db')
+    c = conn.cursor()
+    
+    # Create inventory table
+    c.execute('''CREATE TABLE IF NOT EXISTS inventory
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT NOT NULL, 
+                  category TEXT NOT NULL, 
+                  quantity INTEGER DEFAULT 0, 
+                  price REAL DEFAULT 0.0,
+                  min_stock INTEGER DEFAULT 0, 
+                  description TEXT DEFAULT '', 
+                  status TEXT DEFAULT 'In Stock',
+                  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    
+    # Create inventory history table
+    c.execute('''CREATE TABLE IF NOT EXISTS inventory_history
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  inventory_id INTEGER,
+                  action TEXT,
+                  old_quantity INTEGER,
+                  new_quantity INTEGER,
+                  old_price REAL,
+                  new_price REAL,
+                  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (inventory_id) REFERENCES inventory(id))''')
+    
+    conn.commit()
+    conn.close()
+
+def delete_inventory_item(item_id):
+    """Delete an inventory item and add to history"""
+    try:
+        conn = sqlite3.connect('inventory.db')
+        c = conn.cursor()
+        
+        # Get item details before deletion
+        c.execute("SELECT * FROM inventory WHERE id = ?", (item_id,))
+        item = c.fetchone()
+        
+        if item:
+            # Add to history
+            c.execute("""
+                INSERT INTO inventory_history (
+                    inventory_id, action, old_quantity, new_quantity,
+                    old_price, new_price
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                item_id,
+                "DELETE",
+                item[3],  # quantity
+                0,
+                item[4],  # price
+                0
+            ))
+            
+            # Delete the item
+            c.execute("DELETE FROM inventory WHERE id = ?", (item_id,))
+            conn.commit()
+            return True, "Item deleted successfully"
+        else:
+            return False, "Item not found"
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+def validate_inventory_csv(df):
+    """Validate the CSV data for inventory import"""
+    required_columns = ['name', 'category', 'quantity', 'price', 'min_stock']
+    optional_columns = ['description']
+    
+    # Check required columns
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        return False, f"Missing required columns: {', '.join(missing_columns)}"
+    
+    # Validate data types
+    try:
+        df['quantity'] = pd.to_numeric(df['quantity'], errors='raise')
+        df['price'] = pd.to_numeric(df['price'], errors='raise')
+        df['min_stock'] = pd.to_numeric(df['min_stock'], errors='raise')
+    except ValueError:
+        return False, "Invalid numeric values in quantity, price, or min_stock columns"
+    
+    # Validate non-negative values
+    if (df['quantity'] < 0).any() or (df['price'] < 0).any() or (df['min_stock'] < 0).any():
+        return False, "Negative values found in quantity, price, or min_stock columns"
+    
+    # Validate required fields are not empty
+    if df['name'].isnull().any() or df['category'].isnull().any():
+        return False, "Empty values found in name or category columns"
+    
+    return True, "CSV validation successful"
+
+def import_inventory_from_csv(df):
+    """Import inventory items from validated CSV data"""
+    try:
+        conn = sqlite3.connect('inventory.db')
+        c = conn.cursor()
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for _, row in df.iterrows():
+            try:
+                # Insert into inventory
+                c.execute("""
+                    INSERT INTO inventory (
+                        name, category, quantity, price, 
+                        min_stock, description, status, last_updated
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (
+                    row['name'],
+                    row['category'],
+                    int(row['quantity']),
+                    float(row['price']),
+                    int(row['min_stock']),
+                    row.get('description', ''),
+                    'In Stock' if int(row['quantity']) > 0 else 'Out of Stock'
+                ))
+                
+                # Get the inserted item's ID
+                item_id = c.lastrowid
+                
+                # Add to history
+                c.execute("""
+                    INSERT INTO inventory_history (
+                        inventory_id, action, new_quantity, new_price
+                    ) VALUES (?, ?, ?, ?)
+                """, (
+                    item_id,
+                    "ADD",
+                    int(row['quantity']),
+                    float(row['price'])
+                ))
+                
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error importing {row['name']}: {str(e)}")
+        
+        conn.commit()
+        conn.close()
+        
+        return True, {
+            "success_count": success_count,
+            "error_count": error_count,
+            "errors": errors
+        }
+    except Exception as e:
+        return False, str(e)
 
 def show_admin_dashboard():
     st.title("Admin Dashboard")
@@ -273,30 +443,476 @@ def show_admin_dashboard():
         st.header("Inventory Management")
         st.write("Manage your inventory here")
         
-        # Add inventory form
-        with st.form("add_inventory_form"):
-            item_name = st.text_input("Item Name")
-            quantity = st.number_input("Quantity", min_value=0, step=1)
-            price = st.number_input("Price", min_value=0.0, step=0.01)
-            submit_inventory = st.form_submit_button("Add Item")
+        # Create tabs for different inventory functions
+        inventory_tabs = st.tabs(["Add Items", "View Inventory", "Stock Alerts", "Analytics"])
+        
+        with inventory_tabs[0]:  # Add Items
+            st.subheader("Add New Inventory Item")
             
-            if submit_inventory and item_name and quantity > 0 and price > 0:
+            # Add bulk upload option
+            st.markdown("### Bulk Import")
+            st.markdown("""
+            Import multiple items using a CSV file. The CSV should have the following columns:
+            - name (required): Item name
+            - category (required): Item category
+            - quantity (required): Initial quantity
+            - price (required): Item price
+            - min_stock (required): Minimum stock level
+            - description (optional): Item description
+            """)
+            
+            uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
+            if uploaded_file is not None:
+                try:
+                    df = pd.read_csv(uploaded_file)
+                    
+                    # Show preview
+                    st.write("Preview of uploaded data:")
+                    st.dataframe(df.head())
+                    
+                    # Validate CSV
+                    is_valid, message = validate_inventory_csv(df)
+                    if is_valid:
+                        if st.button("Import Items"):
+                            with st.spinner("Importing items..."):
+                                success, result = import_inventory_from_csv(df)
+                                if success:
+                                    st.success(f"""
+                                    Import completed:
+                                    - Successfully imported: {result['success_count']} items
+                                    - Failed to import: {result['error_count']} items
+                                    """)
+                                    if result['errors']:
+                                        st.warning("Errors encountered:")
+                                        for error in result['errors']:
+                                            st.error(error)
+                                    st.rerun()
+                                else:
+                                    st.error(f"Import failed: {result}")
+                    else:
+                        st.error(f"CSV validation failed: {message}")
+                except Exception as e:
+                    st.error(f"Error reading CSV file: {str(e)}")
+            
+            st.markdown("### Add Single Item")
+            with st.form("add_inventory_form"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    item_name = st.text_input("Item Name", placeholder="Enter item name")
+                    category = st.selectbox("Category", [
+                        "Engine Parts", "Brake Parts", "Electrical Parts",
+                        "Body Parts", "Filters", "Fluids", "Tools", "Accessories"
+                    ])
+                    quantity = st.number_input("Quantity", min_value=0, step=1)
+                
+                with col2:
+                    price = st.number_input("Price (₹)", min_value=0.0, step=0.01)
+                    min_stock = st.number_input("Minimum Stock Level", min_value=0, step=1)
+                    status = st.selectbox("Status", ["In Stock", "Low Stock", "Out of Stock"])
+                
+                description = st.text_area("Description", placeholder="Enter item description")
+                
+                submit_inventory = st.form_submit_button("Add Item")
+                
+                if submit_inventory:
+                    try:
+                        if not item_name or not category:
+                            st.error("Item name and category are required!")
+                            return
+                        
+                        conn = sqlite3.connect('inventory.db')
+                        c = conn.cursor()
+                        
+                        # Insert into inventory
+                        c.execute("""
+                            INSERT INTO inventory (
+                                name, category, quantity, price, 
+                                min_stock, description, status, last_updated
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        """, (
+                            item_name, category, quantity, price,
+                            min_stock, description, status
+                        ))
+                        
+                        # Get the inserted item's ID
+                        item_id = c.lastrowid
+                        
+                        # Add to history
+                        c.execute("""
+                            INSERT INTO inventory_history (
+                                inventory_id, action, new_quantity, new_price
+                            ) VALUES (?, ?, ?, ?)
+                        """, (
+                            item_id, "ADD", quantity, price
+                        ))
+                        
+                        conn.commit()
+                        conn.close()
+                        st.success("Item added successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error adding item: {str(e)}")
+        
+        with inventory_tabs[1]:  # View Inventory
+            st.subheader("Current Inventory")
+            
+            # Search and filter options
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                search_query = st.text_input("🔍 Search Items", placeholder="Search by name, category, or description")
+            
+            with col2:
+                category_filter = st.selectbox(
+                    "Filter by Category",
+                    ["All Categories"] + [
+                        "Engine Parts", "Brake Parts", "Electrical Parts",
+                        "Body Parts", "Filters", "Fluids", "Tools", "Accessories"
+                    ]
+                )
+            
+            with col3:
+                col3_1, col3_2 = st.columns([3, 1])
+                with col3_1:
+                    status_filter = st.selectbox(
+                        "Filter by Status",
+                        ["All", "In Stock", "Low Stock", "Out of Stock"]
+                    )
+                with col3_2:
+                    if st.button("🗑️ Clear", help="Clear all inventory items"):
+                        if st.warning("⚠️ Are you sure you want to clear all inventory items? This action cannot be undone."):
+                            success, message = clear_inventory()
+                            if success:
+                                st.success(message)
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Error clearing inventory: {message}")
+            
+            # Export option
+            if st.button("📥 Export to CSV"):
+                try:
+                    inventory_df = get_inventory_data()
+                    if not inventory_df.empty:
+                        csv = inventory_df.to_csv(index=False)
+                        st.download_button(
+                            "Download CSV",
+                            csv,
+                            "inventory.csv",
+                            "text/csv",
+                            key='download-csv'
+                        )
+                    else:
+                        st.warning("No inventory data to export")
+                except Exception as e:
+                    st.error(f"Error exporting data: {str(e)}")
+            
+            # Get and display inventory data
+            inventory_df = get_inventory_data()
+            
+            if not inventory_df.empty:
+                # Apply filters
+                filtered_df = apply_inventory_filters(inventory_df, search_query, category_filter, status_filter)
+                
+                if filtered_df.empty:
+                    st.info("No items match your search criteria")
+                else:
+                    # Display inventory in a table format
+                    st.dataframe(
+                        filtered_df[['name', 'category', 'quantity', 'price', 'status', 'last_updated']],
+                        column_config={
+                            "name": "Item Name",
+                            "category": "Category",
+                            "quantity": "Quantity",
+                            "price": st.column_config.NumberColumn("Price (₹)", format="₹%.2f"),
+                            "status": "Status",
+                            "last_updated": "Last Updated"
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                    
+                    # Display detailed view for each item
+                    for _, item in filtered_df.iterrows():
+                        st.markdown("---")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown(f"### {item['name']} ({item['category']})")
+                            st.markdown(f"**Quantity:** {item['quantity']}")
+                            st.markdown(f"**Price:** ₹{item['price']}")
+                            st.markdown(f"**Status:** {item['status']}")
+                        
+                        with col2:
+                            st.markdown(f"**Min Stock:** {item['min_stock']}")
+                            st.markdown(f"**Description:** {item.get('description', 'No description available')}")
+                            st.markdown(f"**Last Updated:** {item['last_updated']}")
+                        
+                        # Update quantity and price
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            new_quantity = st.number_input(
+                                f"Update Quantity",
+                                min_value=0,
+                                value=item['quantity'],
+                                key=f"update_qty_{item['id']}"
+                            )
+                        with col4:
+                            new_price = st.number_input(
+                                f"Update Price",
+                                min_value=0.0,
+                                value=item['price'],
+                                key=f"update_price_{item['id']}"
+                            )
+                        
+                        # Action buttons
+                        col5, col6, col7 = st.columns(3)
+                        with col5:
+                            if new_quantity != item['quantity'] or new_price != item['price']:
+                                if st.button("Update", key=f"update_btn_{item['id']}"):
+                                    try:
+                                        conn = sqlite3.connect('inventory.db')
+                                        c = conn.cursor()
+                                        
+                                        # Update inventory
+                                        c.execute("""
+                                            UPDATE inventory 
+                                            SET quantity = ?, price = ?, status = ?, last_updated = CURRENT_TIMESTAMP
+                                            WHERE id = ?
+                                        """, (
+                                            new_quantity,
+                                            new_price,
+                                            "In Stock" if new_quantity > 0 else "Out of Stock",
+                                            item['id']
+                                        ))
+                                        
+                                        # Add to history
+                                        c.execute("""
+                                            INSERT INTO inventory_history (
+                                                inventory_id, action, 
+                                                old_quantity, new_quantity,
+                                                old_price, new_price
+                                            ) VALUES (?, ?, ?, ?, ?, ?)
+                                        """, (
+                                            item['id'],
+                                            "UPDATE",
+                                            item['quantity'],
+                                            new_quantity,
+                                            item['price'],
+                                            new_price
+                                        ))
+                                        
+                                        conn.commit()
+                                        conn.close()
+                                        
+                                        # Show success message
+                                        st.success(f"Item '{item['name']}' updated successfully!")
+                                        # Refresh the page after a short delay
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error updating item: {str(e)}")
+                        
+                        with col6:
+                            if st.button("Delete", key=f"delete_btn_{item['id']}"):
+                                if st.warning("Are you sure you want to delete this item?"):
+                                    success, message = delete_inventory_item(item['id'])
+                                    if success:
+                                        st.success(f"Item '{item['name']}' deleted successfully!")
+                                        # Refresh the page after a short delay
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.error(message)
+                        
+                        with col7:
+                            if st.button("View History", key=f"history_btn_{item['id']}"):
+                                try:
+                                    conn = sqlite3.connect('inventory.db')
+                                    history_df = pd.read_sql_query(
+                                        "SELECT * FROM inventory_history WHERE inventory_id = ? ORDER BY timestamp DESC",
+                                        conn,
+                                        params=(item['id'],)
+                                    )
+                                    conn.close()
+                                    
+                                    if not history_df.empty:
+                                        st.write("Item History:")
+                                        st.dataframe(history_df)
+                                    else:
+                                        st.info("No history available for this item.")
+                                except Exception as e:
+                                    st.error(f"Error loading history: {str(e)}")
+            else:
+                st.info("No inventory items found. Add some items to get started!")
+
+        with inventory_tabs[2]:  # Stock Alerts
+            st.subheader("Stock Alerts")
+            
+            try:
                 conn = sqlite3.connect('vehicle_service.db')
-                c = conn.cursor()
-                c.execute("INSERT INTO inventory (item_id, name, quantity, price) VALUES (?, ?, ?, ?)",
-                         (str(uuid.uuid4()), item_name, quantity, price))
-                conn.commit()
+                inventory_df = pd.read_sql_query("SELECT * FROM inventory", conn)
                 conn.close()
-                st.success("Item added successfully!")
-        
-        # Display inventory
-        conn = sqlite3.connect('vehicle_service.db')
-        inventory_df = pd.read_sql_query("SELECT * FROM inventory", conn)
-        conn.close()
-        
-        if not inventory_df.empty:
-            st.write("Current Inventory:")
-            st.dataframe(inventory_df)
+                
+                if not inventory_df.empty:
+                    # Calculate stock status
+                    inventory_df['stock_status'] = inventory_df.apply(
+                        lambda row: "Low Stock" if row['quantity'] <= row['min_stock'] 
+                        else "Out of Stock" if row['quantity'] == 0 
+                        else "In Stock",
+                        axis=1
+                    )
+                    
+                    # Display alerts
+                    low_stock = inventory_df[inventory_df['stock_status'] == "Low Stock"]
+                    out_of_stock = inventory_df[inventory_df['stock_status'] == "Out of Stock"]
+                    
+                    if not low_stock.empty:
+                        st.warning("### ⚠️ Low Stock Items")
+                        for _, item in low_stock.iterrows():
+                            st.markdown(f"""
+                            - **{item['name']}** ({item['category']})
+                              - Current Stock: {item['quantity']}
+                              - Minimum Required: {item['min_stock']}
+                              - Last Updated: {item['last_updated']}
+                            """)
+                    
+                    if not out_of_stock.empty:
+                        st.error("### ❌ Out of Stock Items")
+                        for _, item in out_of_stock.iterrows():
+                            st.markdown(f"""
+                            - **{item['name']}** ({item['category']})
+                              - Last Price: ₹{item['price']}
+                              - Last Updated: {item['last_updated']}
+                            """)
+                    
+                    if low_stock.empty and out_of_stock.empty:
+                        st.success("All items are well stocked! 🎉")
+                else:
+                    st.info("No inventory items found. Add some items to get started!")
+            except Exception as e:
+                st.error(f"Error loading stock alerts: {str(e)}")
+                st.info("Please try refreshing the page or contact support if the issue persists.")
+
+        with inventory_tabs[3]:  # Analytics
+            st.subheader("Inventory Analytics")
+            
+            try:
+                conn = sqlite3.connect('inventory.db')
+                inventory_df = pd.read_sql_query("SELECT * FROM inventory", conn)
+                conn.close()
+                
+                if not inventory_df.empty:
+                    # Calculate stock status
+                    inventory_df['stock_status'] = inventory_df.apply(
+                        lambda row: "Low Stock" if row['quantity'] <= row['min_stock'] and row['quantity'] > 0
+                        else "Out of Stock" if row['quantity'] == 0
+                        else "In Stock",
+                        axis=1
+                    )
+                    
+                    # Create metrics
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Total Items", len(inventory_df))
+                    
+                    with col2:
+                        total_value = (inventory_df['quantity'] * inventory_df['price']).sum()
+                        st.metric("Total Inventory Value", f"₹{total_value:,.2f}")
+                    
+                    with col3:
+                        low_stock_count = len(inventory_df[inventory_df['stock_status'] == "Low Stock"])
+                        st.metric("Low Stock Items", low_stock_count)
+                    
+                    with col4:
+                        out_of_stock_count = len(inventory_df[inventory_df['stock_status'] == "Out of Stock"])
+                        st.metric("Out of Stock Items", out_of_stock_count)
+                    
+                    # Create visualizations
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Category distribution
+                        category_counts = inventory_df['category'].value_counts()
+                        fig1 = px.pie(
+                            values=category_counts.values,
+                            names=category_counts.index,
+                            title="Inventory by Category"
+                        )
+                        st.plotly_chart(fig1)
+                    
+                    with col2:
+                        # Stock status distribution
+                        status_counts = inventory_df['stock_status'].value_counts()
+                        fig2 = px.bar(
+                            x=status_counts.index,
+                            y=status_counts.values,
+                            title="Stock Status Distribution",
+                            labels={'x': 'Status', 'y': 'Count'}
+                        )
+                        st.plotly_chart(fig2)
+                    
+                    # Top items by value
+                    st.subheader("Top Items by Value")
+                    inventory_df['total_value'] = inventory_df['quantity'] * inventory_df['price']
+                    top_items = inventory_df.nlargest(5, 'total_value')
+                    
+                    fig3 = px.bar(
+                        top_items,
+                        x='name',
+                        y='total_value',
+                        title="Top 5 Items by Inventory Value",
+                        labels={'name': 'Item', 'total_value': 'Value (₹)'}
+                    )
+                    st.plotly_chart(fig3)
+                    
+                    # Recent updates
+                    st.subheader("Recent Updates")
+                    try:
+                        conn = sqlite3.connect('inventory.db')
+                        recent_updates = pd.read_sql_query(
+                            """
+                            SELECT 
+                                h.timestamp,
+                                i.name,
+                                h.action,
+                                h.old_quantity,
+                                h.new_quantity,
+                                h.old_price,
+                                h.new_price
+                            FROM inventory_history h
+                            JOIN inventory i ON h.inventory_id = i.id
+                            ORDER BY h.timestamp DESC LIMIT 10
+                            """,
+                            conn
+                        )
+                        conn.close()
+                        
+                        if not recent_updates.empty:
+                            st.dataframe(
+                                recent_updates,
+                                column_config={
+                                    "timestamp": "Time",
+                                    "name": "Item Name",
+                                    "action": "Action",
+                                    "old_quantity": "Old Quantity",
+                                    "new_quantity": "New Quantity",
+                                    "old_price": st.column_config.NumberColumn("Old Price (₹)", format="₹%.2f"),
+                                    "new_price": st.column_config.NumberColumn("New Price (₹)", format="₹%.2f")
+                                },
+                                hide_index=True
+                            )
+                        else:
+                            st.info("No recent updates found.")
+                    except Exception as e:
+                        st.error(f"Error loading recent updates: {str(e)}")
+                else:
+                    st.info("No inventory items found. Add some items to get started!")
+            except Exception as e:
+                st.error(f"Error loading analytics: {str(e)}")
+                st.info("Please try refreshing the page or contact support if the issue persists.")
     
     with tabs[2]:  # Booking Management
         st.header("Booking Management")
@@ -404,7 +1020,9 @@ def show_admin_dashboard():
             )
             
             if st.button("Get Diagnostic Analysis"):
-                if symptoms:
+                if not symptoms:
+                    st.warning("Please describe the symptoms you're experiencing.")
+                else:
                     with st.spinner("Analyzing symptoms..."):
                         vehicle_details = {
                             "type": vehicle_type,
@@ -442,8 +1060,6 @@ def show_admin_dashboard():
                         
                         maintenance_tips = get_auto_assist_response(maintenance_prompt)
                         st.write(maintenance_tips)
-                else:
-                    st.warning("Please describe the symptoms you're experiencing.")
         
         with ai_tabs[2]:  # Quick Actions
             st.subheader("Quick Actions")
@@ -1214,55 +1830,221 @@ def show_customer_dashboard():
         
         # Display service highlights at the bottom
         st.markdown("---")
-        st.subheader("Our Services")
-        highlights_col1, highlights_col2, highlights_col3 = st.columns(3)
+        st.markdown("## Our Premium Services")
+        st.markdown("Experience excellence in vehicle care with our comprehensive service packages")
         
-        with highlights_col1:
-            st.markdown("### 🚗 Car Services")
-            st.write("- Regular Maintenance")
-            st.write("- Repair Services")
-            st.write("- Body Work")
-            st.write("- Washing Services")
-            st.write("  • Basic Wash")
-            st.write("  • Premium Wash")
-            st.write("  • Deep Cleaning")
-            st.write("  • Interior Detailing")
+        # Create tabs for different service categories
+        service_tabs = st.tabs(["🚗 Car Services", "🏍️ Bike Services", "💧 Washing Packages"])
         
-        with highlights_col2:
-            st.markdown("### 🏍️ Bike Services")
-            st.write("- Periodic Services")
-            st.write("- Repairs & Parts")
-            st.write("- Performance Tuning")
-            st.write("- Washing Services")
-            st.write("  • Basic Wash")
-            st.write("  • Premium Wash")
-            st.write("  • Deep Cleaning")
-            st.write("  • Engine Cleaning")
+        with service_tabs[0]:  # Car Services
+            st.markdown("### Car Maintenance & Services")
+            
+            # Regular Maintenance
+            with st.expander("Regular Maintenance", expanded=True):
+                st.markdown("""
+                #### Basic Service Package
+                - Engine Oil Change
+                - Oil Filter Replacement
+                - Air Filter Cleaning
+                - General Inspection
+                """)
+                st.markdown("**Starting at ₹2,000**")
+                
+                st.markdown("""
+                #### Standard Service Package
+                - All Basic Service Items
+                - Brake System Check
+                - Wheel Alignment
+                - Battery Check
+                - Tire Rotation
+                """)
+                st.markdown("**Starting at ₹4,000**")
+                
+                st.markdown("""
+                #### Premium Service Package
+                - All Standard Service Items
+                - Complete Diagnostics
+                - Detailed Inspection
+                - Interior Cleaning
+                - Performance Check
+                """)
+                st.markdown("**Starting at ₹6,000**")
+            
+            # Repair Services
+            with st.expander("Repair Services", expanded=True):
+                st.markdown("""
+                #### Engine & Transmission
+                - Engine Diagnostics
+                - Engine Overhaul
+                - Transmission Service
+                - Clutch Replacement
+                """)
+                
+                st.markdown("""
+                #### Electrical & AC
+                - Electrical System Repair
+                - AC Service & Repair
+                - Battery Replacement
+                - Wiring Harness Repair
+                """)
+                
+                st.markdown("""
+                #### Brakes & Suspension
+                - Brake System Service
+                - Suspension Work
+                - Wheel Alignment
+                - Shock Absorber Replacement
+                """)
+            
+            # Body Work
+            with st.expander("Body Work", expanded=True):
+                st.markdown("""
+                #### Paint & Dent Work
+                - Paint Work
+                - Dent Removal
+                - Panel Replacement
+                - Glass Repair
+                """)
+                
+                st.markdown("""
+                #### Interior Work
+                - Upholstery Repair
+                - Dashboard Repair
+                - Carpet Replacement
+                - Interior Detailing
+                """)
         
-        with highlights_col3:
-            st.markdown("### 💧 Washing Packages")
-            st.write("#### Car Packages")
-            st.write("- Basic Wash: ₹500")
-            st.write("  • Exterior Wash")
-            st.write("  • Tire Cleaning")
-            st.write("  • Basic Interior")
-            st.write("- Premium Wash: ₹1,000")
-            st.write("  • All Basic Services")
-            st.write("  • Interior Detailing")
-            st.write("  • Waxing")
-            st.write("- Deep Cleaning: ₹2,000")
-            st.write("  • All Premium Services")
-            st.write("  • Engine Bay Cleaning")
-            st.write("  • Ceramic Coating")
-            st.write("#### Bike Packages")
-            st.write("- Basic Wash: ₹200")
-            st.write("  • Exterior Wash")
-            st.write("  • Chain Cleaning")
-            st.write("- Premium Wash: ₹500")
-            st.write("  • All Basic Services")
-            st.write("  • Deep Cleaning")
-            st.write("  • Polishing")
-    
+        with service_tabs[1]:  # Bike Services
+            st.markdown("### Bike Maintenance & Services")
+            
+            # Periodic Services
+            with st.expander("Periodic Services", expanded=True):
+                st.markdown("""
+                #### Basic Service Package
+                - Engine Oil Change
+                - Chain Lubrication
+                - Basic Inspection
+                - Tire Pressure Check
+                """)
+                st.markdown("**Starting at ₹1,000**")
+                
+                st.markdown("""
+                #### Standard Service Package
+                - All Basic Service Items
+                - Air Filter Cleaning
+                - Brake Adjustment
+                - Chain Adjustment
+                - Battery Check
+                """)
+                st.markdown("**Starting at ₹2,000**")
+                
+                st.markdown("""
+                #### Premium Service Package
+                - All Standard Service Items
+                - Complete Diagnostics
+                - Deep Cleaning
+                - Performance Tuning
+                - Carburetor Tuning
+                """)
+                st.markdown("**Starting at ₹3,000**")
+            
+            # Repairs & Parts
+            with st.expander("Repairs & Parts", expanded=True):
+                st.markdown("""
+                #### Engine & Transmission
+                - Engine Overhaul
+                - Parts Replacement
+                - Chain & Sprocket Set
+                - Clutch Repair
+                """)
+                
+                st.markdown("""
+                #### Electrical & Performance
+                - Electrical Work
+                - Performance Tuning
+                - ECU Remapping
+                - Exhaust System
+                """)
+            
+            # Customization
+            with st.expander("Customization", expanded=True):
+                st.markdown("""
+                #### Performance Upgrades
+                - Performance Kits
+                - Exhaust Systems
+                - Air Filters
+                - ECU Tuning
+                """)
+                
+                st.markdown("""
+                #### Cosmetic Modifications
+                - Paint Jobs
+                - Accessory Installation
+                - LED Kits
+                - Custom Graphics
+                """)
+        
+        with service_tabs[2]:  # Washing Packages
+            st.markdown("### Washing & Detailing Services")
+            
+            # Car Wash Packages
+            with st.expander("Car Wash Packages", expanded=True):
+                st.markdown("""
+                #### Basic Wash - ₹500
+                - Exterior Wash
+                - Tire Cleaning
+                - Basic Interior
+                - Window Cleaning
+                """)
+                
+                st.markdown("""
+                #### Premium Wash - ₹1,000
+                - All Basic Services
+                - Interior Detailing
+                - Dashboard Polishing
+                - Seat Cleaning
+                - Carpet Cleaning
+                - Waxing & Polishing
+                """)
+                
+                st.markdown("""
+                #### Deep Cleaning - ₹2,000
+                - All Premium Services
+                - Engine Bay Cleaning
+                - Underbody Wash
+                - Ceramic Coating
+                - Leather Treatment
+                - Odor Removal
+                """)
+            
+            # Bike Wash Packages
+            with st.expander("Bike Wash Packages", expanded=True):
+                st.markdown("""
+                #### Basic Wash - ₹200
+                - Exterior Wash
+                - Chain Cleaning
+                - Basic Inspection
+                - Tire Cleaning
+                """)
+                
+                st.markdown("""
+                #### Premium Wash - ₹500
+                - All Basic Services
+                - Deep Cleaning
+                - Polishing
+                - Chain Lubrication
+                - Tire Dressing
+                """)
+                
+                st.markdown("""
+                #### Deep Cleaning - ₹1,000
+                - All Premium Services
+                - Engine Cleaning
+                - Metal Polishing
+                - Ceramic Coating
+                - Paint Protection
+                """)
+
     elif st.session_state.current_page == 'book_service':
         show_initial_booking_form()
     
@@ -1412,125 +2194,188 @@ def show_customer_dashboard():
 
 def show_service_calculator():
     st.header("Service Cost Calculator")
+    st.markdown("Estimate the cost of your service with our interactive calculator")
     
-    # Vehicle Type Selection
-    vehicle_type = st.selectbox("Select Vehicle Type", ["Car", "Motorcycle"])
-    
-    # Service Type Selection
-    service_type = st.selectbox("Select Service Type", ["Regular Maintenance", "Repair", "Washing", "Inspection"])
-    
-    # Get repair types for the selected vehicle type
-    repair_types = get_repair_types()
-    
-    # Calculate base cost based on vehicle type and service type
-    base_cost = 0
-    if vehicle_type == "Car":
-        if service_type == "Regular Maintenance":
-            base_cost = 2000
-        elif service_type == "Washing":
-            base_cost = 500
-        elif service_type == "Inspection":
-            base_cost = 1000
-    else:  # Motorcycle
-        if service_type == "Regular Maintenance":
-            base_cost = 1000
-        elif service_type == "Washing":
-            base_cost = 200
-        elif service_type == "Inspection":
-            base_cost = 500
-    
-    # Additional costs based on service type
-    additional_cost = 0
-    
-    if service_type == "Regular Maintenance":
-        st.subheader("Maintenance Items")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if vehicle_type == "Car":
-                items = [
-                    ("Engine Oil Change", 500),
-                    ("Oil Filter Replacement", 300),
-                    ("Air Filter Cleaning", 400),
-                    ("Brake Check", 600),
-                    ("Wheel Alignment", 800)
-                ]
-            else:
-                items = [
-                    ("Engine Oil Change", 300),
-                    ("Oil Filter Replacement", 200),
-                    ("Air Filter Cleaning", 250),
-                    ("Chain Cleaning", 200),
-                    ("Brake Adjustment", 300)
-                ]
-            
-            for item, cost in items:
-                if st.checkbox(f"{item} (₹{cost})"):
-                    additional_cost += cost
-    
-    elif service_type == "Repair":
-        st.subheader("Repair Items")
-        repair_categories = list(repair_types[vehicle_type].keys())
-        selected_category = st.selectbox("Select Repair Category", repair_categories)
-        
-        repair_items = repair_types[vehicle_type][selected_category]
-        selected_items = st.multiselect("Select Repair Items", repair_items)
-        
-        # Add cost for each selected repair item
-        for item in selected_items:
-            if "Engine" in item:
-                additional_cost += 5000
-            elif "Transmission" in item:
-                additional_cost += 4000
-            elif "Brake" in item:
-                additional_cost += 2000
-            elif "Suspension" in item:
-                additional_cost += 3000
-            elif "Electrical" in item:
-                additional_cost += 1500
-            elif "AC" in item:
-                additional_cost += 2500
-            else:
-                additional_cost += 1000
-    
-    elif service_type == "Washing":
-        st.subheader("Washing Services")
-        if vehicle_type == "Car":
-            packages = [
-                ("Basic Wash", 500, ["Exterior Wash", "Tire Cleaning", "Basic Interior"]),
-                ("Premium Wash", 1000, ["All Basic Services", "Interior Detailing", "Waxing"]),
-                ("Deep Cleaning", 2000, ["All Premium Services", "Engine Bay Cleaning", "Ceramic Coating"])
-            ]
-        else:
-            packages = [
-                ("Basic Wash", 200, ["Exterior Wash", "Chain Cleaning"]),
-                ("Premium Wash", 500, ["All Basic Services", "Deep Cleaning", "Polishing"]),
-                ("Deep Cleaning", 1000, ["All Premium Services", "Engine Cleaning", "Ceramic Coating"])
-            ]
-        
-        selected_package = st.radio("Select Washing Package", [p[0] for p in packages])
-        for package, cost, _ in packages:
-            if package == selected_package:
-                additional_cost = cost
-                break
-    
-    # Calculate total cost
-    total_cost = base_cost + additional_cost
-    
-    # Display cost breakdown
-    st.markdown("---")
-    st.subheader("Cost Breakdown")
-    col1, col2 = st.columns(2)
+    # Create two columns for the main layout
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.write(f"Base Cost: ₹{base_cost}")
-        st.write(f"Additional Services: ₹{additional_cost}")
+        # Vehicle Type Selection with icons
+        vehicle_type = st.selectbox(
+            "Select Vehicle Type",
+            ["Car", "Motorcycle"],
+            format_func=lambda x: f"🚗 {x}" if x == "Car" else f"🏍️ {x}"
+        )
+        
+        # Service Type Selection with icons
+        service_type = st.selectbox(
+            "Select Service Type",
+            ["Regular Maintenance", "Repair", "Washing", "Inspection"],
+            format_func=lambda x: {
+                "Regular Maintenance": "🔧 Regular Maintenance",
+                "Repair": "🔨 Repair",
+                "Washing": "💧 Washing",
+                "Inspection": "🔍 Inspection"
+            }[x]
+        )
+        
+        # Get repair types for the selected vehicle type
+        repair_types = get_repair_types()
+        
+        # Calculate base cost based on vehicle type and service type
+        base_cost = 0
+        if vehicle_type == "Car":
+            if service_type == "Regular Maintenance":
+                base_cost = 2000
+            elif service_type == "Washing":
+                base_cost = 500
+            elif service_type == "Inspection":
+                base_cost = 1000
+        else:  # Motorcycle
+            if service_type == "Regular Maintenance":
+                base_cost = 1000
+            elif service_type == "Washing":
+                base_cost = 200
+            elif service_type == "Inspection":
+                base_cost = 500
+        
+        # Additional costs based on service type
+        additional_cost = 0
+        selected_items = []
+        
+        if service_type == "Regular Maintenance":
+            st.subheader("Maintenance Items")
+            
+            # Create columns for maintenance items
+            maint_col1, maint_col2 = st.columns(2)
+            
+            with maint_col1:
+                if vehicle_type == "Car":
+                    items = [
+                        ("Engine Oil Change", 500, "🛢️"),
+                        ("Oil Filter Replacement", 300, "🔍"),
+                        ("Air Filter Cleaning", 400, "💨"),
+                        ("Brake Check", 600, "🛑"),
+                        ("Wheel Alignment", 800, "⚙️")
+                    ]
+                else:
+                    items = [
+                        ("Engine Oil Change", 300, "🛢️"),
+                        ("Oil Filter Replacement", 200, "🔍"),
+                        ("Air Filter Cleaning", 250, "💨"),
+                        ("Chain Cleaning", 200, "⛓️"),
+                        ("Brake Adjustment", 300, "🛑")
+                    ]
+                
+                for item, cost, icon in items:
+                    if st.checkbox(f"{icon} {item} (₹{cost})"):
+                        additional_cost += cost
+                        selected_items.append((item, cost))
+        
+        elif service_type == "Repair":
+            st.subheader("Repair Items")
+            
+            # Repair Categories
+            repair_categories = list(repair_types[vehicle_type].keys())
+            selected_category = st.selectbox(
+                "Select Repair Category",
+                repair_categories,
+                format_func=lambda x: f"🔧 {x}"
+            )
+            
+            # Repair Items with costs
+            repair_items = repair_types[vehicle_type][selected_category]
+            repair_costs = {
+                "Engine": 5000,
+                "Transmission": 4000,
+                "Brake": 2000,
+                "Suspension": 3000,
+                "Electrical": 1500,
+                "AC": 2500,
+                "Body": 1000
+            }
+            
+            # Create columns for repair items
+            repair_col1, repair_col2 = st.columns(2)
+            
+            with repair_col1:
+                for item in repair_items:
+                    cost = repair_costs.get(selected_category, 1000)
+                    if st.checkbox(f"🔧 {item} (₹{cost})"):
+                        additional_cost += cost
+                        selected_items.append((item, cost))
+        
+        elif service_type == "Washing":
+            st.subheader("Washing Services")
+            
+            if vehicle_type == "Car":
+                packages = [
+                    ("Basic Wash", 500, ["Exterior Wash", "Tire Cleaning", "Basic Interior"], "🧹"),
+                    ("Premium Wash", 1000, ["All Basic Services", "Interior Detailing", "Waxing"], "✨"),
+                    ("Deep Cleaning", 2000, ["All Premium Services", "Engine Bay Cleaning", "Ceramic Coating"], "🌟")
+                ]
+            else:
+                packages = [
+                    ("Basic Wash", 200, ["Exterior Wash", "Chain Cleaning"], "🧹"),
+                    ("Premium Wash", 500, ["All Basic Services", "Deep Cleaning", "Polishing"], "✨"),
+                    ("Deep Cleaning", 1000, ["All Premium Services", "Engine Cleaning", "Ceramic Coating"], "🌟")
+                ]
+            
+            selected_package = st.radio(
+                "Select Washing Package",
+                [p[0] for p in packages],
+                format_func=lambda x: f"{next(p[3] for p in packages if p[0] == x)} {x}"
+            )
+            
+            for package, cost, services, icon in packages:
+                if package == selected_package:
+                    additional_cost = cost
+                    selected_items = [(service, 0) for service in services]
+                    break
     
     with col2:
-        st.markdown(f"### Total Cost: ₹{total_cost}")
-    
-    # Disclaimer
-    st.info("Note: This is an estimated cost. Final cost may vary based on actual service requirements and parts needed.")
+        # Cost Summary Card
+        st.markdown("### Cost Summary")
+        
+        # Create a container for the cost summary
+        with st.container():
+            # Base Cost
+            st.markdown("#### Base Cost")
+            st.markdown(f"**₹{base_cost}**")
+            
+            # Additional Services
+            st.markdown("#### Additional Services")
+            st.markdown(f"**₹{additional_cost}**")
+            
+            # Divider
+            st.markdown("---")
+            
+            # Total Cost
+            st.markdown("### Total Cost")
+            st.markdown(f"**₹{base_cost + additional_cost}**")
+        
+        # Selected Services List
+        if selected_items:
+            st.markdown("### Selected Services")
+            for item, cost in selected_items:
+                if cost > 0:
+                    st.markdown(f"- {item} (₹{cost})")
+                else:
+                    st.markdown(f"- {item}")
+        
+        # Disclaimer
+        st.info("""
+        **Note:** This is an estimated cost. Final cost may vary based on:
+        - Actual service requirements
+        - Parts needed
+        - Additional issues found during inspection
+        - Vehicle condition
+        """)
+        
+        # Book Now Button
+        if st.button("📝 Book This Service", use_container_width=True):
+            st.session_state.current_page = 'book_service'
+            st.rerun()
 
 def show_chatbot():
     st.header("Chat Support")
@@ -1616,6 +2461,64 @@ def generate_chat_response(prompt):
             return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
     except Exception as e:
         return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
+
+def get_inventory_data():
+    """Get inventory data with proper error handling"""
+    try:
+        conn = sqlite3.connect('inventory.db')
+        inventory_df = pd.read_sql_query("""
+            SELECT 
+                id, name, category, quantity, price, 
+                min_stock, description, status,
+                COALESCE(last_updated, CURRENT_TIMESTAMP) as last_updated
+            FROM inventory
+        """, conn)
+        conn.close()
+        return inventory_df
+    except Exception as e:
+        st.error(f"Error loading inventory: {str(e)}")
+        return pd.DataFrame()
+
+def apply_inventory_filters(df, search_query, category_filter, status_filter):
+    """Apply filters to inventory data"""
+    if df.empty:
+        return df
+        
+    # Apply search filter
+    if search_query:
+        search_query = search_query.lower()
+        df = df[
+            df['name'].str.lower().str.contains(search_query) |
+            df['category'].str.lower().str.contains(search_query) |
+            df['description'].str.lower().str.contains(search_query)
+        ]
+    
+    # Apply category filter
+    if category_filter != "All Categories":
+        df = df[df['category'] == category_filter]
+    
+    # Apply status filter
+    if status_filter != "All":
+        df = df[df['status'] == status_filter]
+    
+    return df
+
+def clear_inventory():
+    """Clear all inventory items and their history"""
+    try:
+        conn = sqlite3.connect('inventory.db')
+        c = conn.cursor()
+        
+        # First clear the history table (due to foreign key constraint)
+        c.execute("DELETE FROM inventory_history")
+        # Then clear the inventory table
+        c.execute("DELETE FROM inventory")
+        
+        conn.commit()
+        conn.close()
+        return True, "Inventory cleared successfully"
+    except Exception as e:
+        return False, str(e)
 
 def main():
     init_db()
