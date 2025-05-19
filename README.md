@@ -1,4 +1,4 @@
-# Vehicle Services System
+# AUTO ASSIST AND BOOKING SYSTEM
 
 A comprehensive vehicle service management system built with Streamlit, featuring both customer and admin interfaces.
 

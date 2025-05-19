@@ -68,13 +68,13 @@ def show_support():
         if st.button("💰 Service Costs"):
             st.session_state.chat_history.append({
                 "user": "What are your service costs?",
-                "assistant": "Our service costs vary depending on the type of service and vehicle. Here are some estimates:\n1. General Service: $50-$100\n2. Oil Change: $30-$70\n3. Brake Service: $100-$300\n4. Engine Tune-up: $200-$500\n\nWould you like a specific cost estimate?"
+                "assistant": "Our service costs vary depending on the type of service and vehicle. Here are some estimates:\n1. General Service: ₹2,000-₹6,000\n2. Oil Change: ₹500-₹1,000\n3. Brake Service: ₹1,000-₹3,000\n4. Engine Tune-up: ₹2,000-₹5,000\n\nWould you like a specific cost estimate?"
             })
     with col4:
         if st.button("🆘 Emergency Help"):
             st.session_state.chat_history.append({
                 "user": "I need emergency help!",
-                "assistant": "For emergency assistance:\n1. Call our 24/7 helpline: XXX-XXX-XXXX\n2. Use our roadside assistance service\n3. If you're in immediate danger, call emergency services\n\nCan you describe your emergency situation?"
+                "assistant": "For emergency assistance:\n1. Call our 24/7 helpline: 9988776655\n2. Use our roadside assistance service\n3. If you're in immediate danger, call emergency services\n\nCan you describe your emergency situation?"
             })
     
     # Display chat history
@@ -121,7 +121,8 @@ def show_support():
         - Reduced performance
         
         📞 Emergency Contacts:
-        - Service Center: XXX-XXX-XXXX
-        - Roadside Assistance: XXX-XXX-XXXX
+        - Service Center: 9988776655
+        - Email: uchihabyte.git@gmail.com
+        - Location: Hyderabad, Telangana
         - Emergency: 911
         """) 

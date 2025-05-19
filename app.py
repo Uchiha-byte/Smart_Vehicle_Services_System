@@ -204,7 +204,7 @@ def get_staff_assistance(task: str, context: Dict) -> str:
 
 # Configure page with dark theme
 st.set_page_config(
-    page_title="Vehicle Service System",
+    page_title="AUTO ASSIST AND BOOKING SYSTEM",
     page_icon="🚗",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -1739,7 +1739,7 @@ def show_bike_service_form():
                 st.error(f"Error booking service: {str(e)}")
 
 def show_customer_dashboard():
-    st.title("Vehicle Service System")
+    st.title("AUTO ASSIST AND BOOKING SYSTEM")
     
     # Initialize the current page in session state if not exists
     if 'current_page' not in st.session_state:
@@ -1754,7 +1754,7 @@ def show_customer_dashboard():
     # Show the appropriate page based on current_page
     if st.session_state.current_page == 'home':
         # Welcome message
-        st.markdown("### Welcome to Vehicle Service System")
+        st.markdown("### Welcome to AUTO ASSIST AND BOOKING SYSTEM")
         st.write("Select a service to proceed:")
         
         # Create three rows of cards with 2 cards each
@@ -2378,11 +2378,64 @@ def show_service_calculator():
             st.rerun()
 
 def show_chatbot():
-    st.header("Chat Support")
+    st.header("AI Chat Support")
     
     # Initialize chat history in session state if it doesn't exist
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
+    
+    # Quick Assist Features
+    st.subheader("Quick Assist")
+    st.write("Click on a common query to get instant assistance:")
+    
+    # Create columns for quick assist buttons
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📅 How do I book a service?", use_container_width=True):
+            prompt = "How do I book a service appointment?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+        
+        if st.button("💰 What are your service prices?", use_container_width=True):
+            prompt = "What are your service prices and packages?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+        
+        if st.button("⏰ What are your working hours?", use_container_width=True):
+            prompt = "What are your service center working hours?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+    
+    with col2:
+        if st.button("🔧 What services do you offer?", use_container_width=True):
+            prompt = "What types of services do you offer for vehicles?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+        
+        if st.button("❓ How do I check my service status?", use_container_width=True):
+            prompt = "How can I check the status of my service booking?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+        
+        if st.button("📞 How can I contact support?", use_container_width=True):
+            prompt = "What are your contact details and support options?"
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            response = generate_chat_response(prompt)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.rerun()
+    
+    st.markdown("---")
     
     # Display chat history
     for message in st.session_state.chat_history:
@@ -2398,7 +2451,7 @@ def show_chatbot():
         with st.chat_message("user"):
             st.write(prompt)
         
-        # Generate response based on common queries and troubleshooting
+        # Generate response using Gemini AI
         response = generate_chat_response(prompt)
         
         # Add assistant response to chat history
@@ -2407,60 +2460,90 @@ def show_chatbot():
         # Display assistant response
         with st.chat_message("assistant"):
             st.write(response)
+    
+    # Add a clear chat button
+    if st.button("Clear Chat History", use_container_width=True):
+        st.session_state.chat_history = []
+        st.rerun()
 
 def generate_chat_response(prompt):
-    """Generate a response based on the user's prompt"""
-    prompt = prompt.lower()
-    
-    # Common queries and their responses
-    responses = {
-        "service": "We offer various services including regular maintenance, repairs, washing, and inspections. You can find detailed information in the 'Service Information' section.",
-        "price": "Our service prices vary based on the type of service and vehicle. You can use the 'Cost Calculator' to get an estimate for your specific needs.",
-        "booking": "To book a service, click on 'Book Service' from the home page. You'll need to provide your vehicle details and preferred service date.",
-        "time": "Our service center is open from 8:00 AM to 9:00 PM, Monday through Saturday. We're closed on Sundays.",
-        "location": "We are located at 123 Service Street, Auto City. You can find us easily using any map application.",
-        "contact": "You can reach us at:\nPhone: 123-456-7890\nEmail: support@vehicleservice.com",
-        "warranty": "We provide a 3-month warranty on all our services. For more details, please check our warranty policy in the Service Information section.",
-        "payment": "We accept cash, credit/debit cards, and digital payments. Payment is due upon service completion.",
-        "cancel": "You can cancel your booking up to 24 hours before the scheduled time. Please contact our support team for cancellation.",
-        "status": "To check your service status, go to 'Service Status' from the home page and enter your booking ID."
-    }
-    
-    # Check for keywords in the prompt
-    for keyword, response in responses.items():
-        if keyword in prompt:
-            return response
-    
-    # If no common query matches, try to provide troubleshooting assistance
+    """Generate a response using Gemini AI based on the user's prompt"""
     try:
-        troubleshooting_prompt = f"""
-        As an automotive troubleshooting assistant, provide a simple solution for the following issue:
+        # Prepare the context for Gemini AI
+        context = {
+            "service_info": {
+                "services": {
+                    "regular_maintenance": {
+                        "car": {
+                            "basic": "₹2,000",
+                            "standard": "₹4,000",
+                            "premium": "₹6,000"
+                        },
+                        "bike": {
+                            "basic": "₹1,000",
+                            "standard": "₹2,000",
+                            "premium": "₹3,000"
+                        }
+                    },
+                    "washing": {
+                        "car": {
+                            "basic": "₹500",
+                            "premium": "₹1,000",
+                            "deep_cleaning": "₹2,000"
+                        },
+                        "bike": {
+                            "basic": "₹200",
+                            "premium": "₹500",
+                            "deep_cleaning": "₹1,000"
+                        }
+                    }
+                },
+                "working_hours": "8:00 AM to 9:00 PM, Monday through Saturday",
+                "location": "Hyderabad, Telangana",
+                "contact": {
+                    "phone": "9988776655",
+                    "email": "uchihabyte.git@gmail.com"
+                }
+            }
+        }
         
-        User Query: {prompt}
+        # Create a detailed prompt for Gemini AI
+        full_prompt = f"""
+        You are an automotive service center AI assistant. Provide helpful, accurate, and friendly responses.
         
-        Please provide your response in this format:
+        Context about our service center:
+        {context}
         
-        Quick Diagnosis:\n\n
-        • [Brief assessment of the problem]\n\n
+        Previous conversation history:
+        {st.session_state.chat_history}
         
-        Simple Solutions:\n\n
-        • [Step 1 - Most basic solution]\n\n
-        • [Step 2 - If step 1 doesn't work]\n\n
+        User's current query: {prompt}
         
-        When to Visit Service Center:\n\n
-        • [Warning signs that indicate professional help is needed]\n\n
+        Please provide a response that is:
+        1. Relevant to the user's query
+        2. Helpful and informative
+        3. Professional yet friendly
+        4. Includes specific details when relevant
+        5. Suggests next steps or related information when appropriate
         
-        Keep the response brief, practical, and easy to understand.
-        Focus on simple solutions that can be done at home.
+        If the query is about vehicle problems, provide:
+        1. Quick diagnosis
+        2. Simple solutions
+        3. When to visit the service center
+        
+        Format your response in a clear, easy-to-read way using bullet points or numbered lists when appropriate.
         """
         
-        response = model.generate_content(troubleshooting_prompt)
+        # Generate response using Gemini AI
+        response = model.generate_content(full_prompt)
+        
         if response and hasattr(response, 'text'):
             return response.text
         else:
-            return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
+            return "I apologize, but I'm having trouble generating a response right now. Please try rephrasing your question or contact our support team directly."
+            
     except Exception as e:
-        return "I'm here to help! You can ask me about our services, prices, booking process, operating hours, location, contact information, warranty, payment methods, cancellation policy, or service status. What would you like to know?"
+        return f"I apologize, but I encountered an error: {str(e)}. Please try again or contact our support team for assistance."
 
 def get_inventory_data():
     """Get inventory data with proper error handling"""
@@ -2520,11 +2603,103 @@ def clear_inventory():
     except Exception as e:
         return False, str(e)
 
+def show_service_status():
+    st.header("Service Status")
+    
+    # Get customer name from session state or prompt for input
+    customer_name = st.session_state.get('customer_name')
+    if not customer_name:
+        customer_name = st.text_input("Enter your name to view service status")
+    
+    if customer_name:
+        try:
+            # Connect to database
+            conn = sqlite3.connect('vehicle_service.db')
+            c = conn.cursor()
+            
+            # Get customer's bookings
+            c.execute("""
+                SELECT * FROM bookings 
+                WHERE customer_name = ? 
+                ORDER BY booking_date DESC
+            """, (customer_name,))
+            
+            bookings = c.fetchall()
+            conn.close()
+            
+            if bookings:
+                # Separate active and completed bookings
+                active_bookings = [b for b in bookings if b[7] not in ['Completed', 'Cancelled']]
+                completed_bookings = [b for b in bookings if b[7] in ['Completed', 'Cancelled']]
+                
+                # Display active bookings
+                if active_bookings:
+                    st.subheader("Active Bookings")
+                    for booking in active_bookings:
+                        with st.expander(f"Booking ID: {booking[0]} - {booking[4]} ({booking[6]})"):
+                            st.write(f"**Vehicle Type:** {booking[2]}")
+                            st.write(f"**Vehicle Number:** {booking[3]}")
+                            st.write(f"**Service Type:** {booking[4]}")
+                            st.write(f"**Booking Date:** {booking[5]}")
+                            st.write(f"**Time Slot:** {booking[6]}")
+                            st.write(f"**Status:** {booking[7]}")
+                            if booking[8]:  # Description
+                                st.write(f"**Description:** {booking[8]}")
+                
+                # Display completed bookings
+                if completed_bookings:
+                    st.subheader("Completed Bookings")
+                    for booking in completed_bookings:
+                        with st.expander(f"Booking ID: {booking[0]} - {booking[4]} ({booking[6]})"):
+                            st.write(f"**Vehicle Type:** {booking[2]}")
+                            st.write(f"**Vehicle Number:** {booking[3]}")
+                            st.write(f"**Service Type:** {booking[4]}")
+                            st.write(f"**Booking Date:** {booking[5]}")
+                            st.write(f"**Time Slot:** {booking[6]}")
+                            st.write(f"**Status:** {booking[7]}")
+                            if booking[8]:  # Description
+                                st.write(f"**Description:** {booking[8]}")
+                
+                # Admin interface for updating status
+                if st.session_state.get('current_view') == 'admin':
+                    st.subheader("Update Booking Status")
+                    booking_id = st.selectbox(
+                        "Select Booking",
+                        [b[0] for b in bookings],
+                        format_func=lambda x: f"Booking ID: {x}"
+                    )
+                    new_status = st.selectbox(
+                        "New Status",
+                        ["Pending", "In Progress", "Completed", "Cancelled"]
+                    )
+                    
+                    if st.button("Update Status"):
+                        try:
+                            conn = sqlite3.connect('vehicle_service.db')
+                            c = conn.cursor()
+                            c.execute(
+                                "UPDATE bookings SET status = ? WHERE booking_id = ?",
+                                (new_status, booking_id)
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success("Status updated successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error updating status: {str(e)}")
+            else:
+                st.info("No bookings found for this customer.")
+        
+        except Exception as e:
+            st.error(f"Error retrieving booking information: {str(e)}")
+    else:
+        st.info("Please enter your name to view service status.")
+
 def main():
     init_db()
     
     # Main title
-    st.markdown("<h1 style='text-align: center;'>Vehicle Service System</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>AUTO ASSIST AND BOOKING SYSTEM</h1>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Create two columns for the buttons
