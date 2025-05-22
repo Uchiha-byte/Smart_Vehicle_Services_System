@@ -9,6 +9,7 @@ import uuid
 import google.generativeai as genai
 from typing import Dict, List, Optional
 import time
+import hashlib
 
 # Load environment variables
 load_dotenv('api.env')
@@ -220,6 +221,15 @@ def init_db():
     conn = sqlite3.connect('vehicle_service.db')
     c = conn.cursor()
     
+    # Create users table
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (user_id TEXT PRIMARY KEY,
+                  username TEXT UNIQUE NOT NULL,
+                  password TEXT NOT NULL,
+                  role TEXT NOT NULL,
+                  email TEXT UNIQUE,
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    
     # Create staff and bookings tables
     c.execute('''CREATE TABLE IF NOT EXISTS staff
                  (staff_id TEXT PRIMARY KEY,
@@ -406,6 +416,13 @@ def import_inventory_from_csv(df):
 
 def show_admin_dashboard():
     st.title("Admin Dashboard")
+    
+    # Add logout button in the top right
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("Logout", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
     
     # Create tabs for different admin functions
     tabs = st.tabs(["Staff Management", "Inventory Management", "Booking Management", "AI Assistant"])
@@ -1741,6 +1758,13 @@ def show_bike_service_form():
 def show_customer_dashboard():
     st.title("AUTO ASSIST AND BOOKING SYSTEM")
     
+    # Add logout button in the top right
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("Logout", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+    
     # Initialize the current page in session state if not exists
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 'home'
@@ -2695,30 +2719,151 @@ def show_service_status():
     else:
         st.info("Please enter your name to view service status.")
 
+def hash_password(password):
+    """Hash a password using a secure algorithm"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, hashed):
+    """Verify a password against its hash"""
+    return hash_password(password) == hashed
+
+def register_user(username, password, role, email=None):
+    """Register a new user"""
+    try:
+        conn = sqlite3.connect('vehicle_service.db')
+        c = conn.cursor()
+        
+        # Check if username already exists
+        c.execute("SELECT username FROM users WHERE username = ?", (username,))
+        if c.fetchone():
+            return False, "Username already exists"
+        
+        # Check if email already exists (if provided)
+        if email:
+            c.execute("SELECT email FROM users WHERE email = ?", (email,))
+            if c.fetchone():
+                return False, "Email already registered"
+        
+        # Hash password and insert user
+        hashed_password = hash_password(password)
+        user_id = str(uuid.uuid4())
+        
+        c.execute("""
+            INSERT INTO users (user_id, username, password, role, email)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, username, hashed_password, role, email))
+        
+        conn.commit()
+        return True, "User registered successfully"
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+def authenticate_user(username, password):
+    """Authenticate a user"""
+    try:
+        conn = sqlite3.connect('vehicle_service.db')
+        c = conn.cursor()
+        
+        # Get user details
+        c.execute("""
+            SELECT user_id, username, password, role, email
+            FROM users WHERE username = ?
+        """, (username,))
+        
+        user = c.fetchone()
+        if not user:
+            return False, "User not found"
+        
+        # Verify password
+        if not verify_password(password, user[2]):
+            return False, "Invalid password"
+        
+        return True, {
+            "user_id": user[0],
+            "username": user[1],
+            "role": user[3],
+            "email": user[4]
+        }
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+def show_login_page():
+    """Show the login page"""
+    st.title("AUTO ASSIST AND BOOKING SYSTEM")
+    
+    # Simple toggle button for role selection
+    role = st.toggle("👨‍💼 Admin Mode", value=False, help="Toggle for Admin/Customer access")
+    st.session_state['selected_role'] = 'admin' if role else 'customer'
+    
+    st.markdown(f"### {st.session_state['selected_role'].title()} Login")
+    
+    # Create tabs for login and registration
+    login_tab, register_tab = st.tabs(["Login", "Register"])
+    
+    with login_tab:
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login")
+            
+            if submit:
+                if not username or not password:
+                    st.error("Please fill in all fields")
+                else:
+                    success, result = authenticate_user(username, password)
+                    if success:
+                        if result['role'] != st.session_state['selected_role']:
+                            st.error(f"Invalid role. Please use {st.session_state['selected_role']} login.")
+                        else:
+                            st.session_state['authenticated'] = True
+                            st.session_state['user'] = result
+                            st.session_state['current_view'] = result['role']
+                            st.rerun()
+                    else:
+                        st.error(result)
+    
+    with register_tab:
+        with st.form("register_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            email = st.text_input("Email (optional)")
+            submit = st.form_submit_button("Register")
+            
+            if submit:
+                if not username or not password or not confirm_password:
+                    st.error("Please fill in all required fields")
+                elif password != confirm_password:
+                    st.error("Passwords do not match")
+                else:
+                    success, message = register_user(username, password, st.session_state['selected_role'], email)
+                    if success:
+                        st.success(message)
+                        st.rerun()
+                    else:
+                        st.error(message)
+    
 def main():
     init_db()
     
-    # Main title
-    st.markdown("<h1 style='text-align: center;'>AUTO ASSIST AND BOOKING SYSTEM</h1>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Initialize session state
+    if 'authenticated' not in st.session_state:
+        st.session_state['authenticated'] = False
     
-    # Create two columns for the buttons
-    col1, col2 = st.columns(2)
+    # Show login page if not authenticated
+    if not st.session_state.get('authenticated'):
+        show_login_page()
+        return
     
-    with col1:
-        if st.button("Admin Access", use_container_width=True):
-            st.session_state['current_view'] = 'admin'
-            
-    with col2:
-        if st.button("Customer Access", use_container_width=True):
-            st.session_state['current_view'] = 'customer'
-    
-    # Show the appropriate dashboard based on button click
-    if 'current_view' in st.session_state:
-        if st.session_state['current_view'] == 'admin':
-            show_admin_dashboard()
-        elif st.session_state['current_view'] == 'customer':
-            show_customer_dashboard()
+    # Show the appropriate dashboard based on user role
+    if st.session_state['current_view'] == 'admin':
+        show_admin_dashboard()
+    elif st.session_state['current_view'] == 'customer':
+        show_customer_dashboard()
 
 if __name__ == "__main__":
     main() 
