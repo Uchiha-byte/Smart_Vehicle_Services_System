@@ -1,59 +1,56 @@
-# AUTO ASSIST AND BOOKING SYSTEM
+# Vehicle Services System
 
-A comprehensive vehicle service management system built with Streamlit, featuring both customer and admin interfaces.
+A comprehensive vehicle service management system built with Streamlit and Python, featuring AI-powered assistance and automated booking management.
 
-## Features
+## 🌟 Features
 
-### Customer Features
+### For Customers
 - **Service Booking**
-  - Easy booking process for cars and motorcycles
+  - Easy booking interface for cars and motorcycles
   - Multiple service types (Regular Maintenance, Repair, Washing)
-  - Time slot selection
+  - Flexible time slot selection
   - Service history tracking
-  - Cost calculator
-
-- **Service Information**
-  - Detailed service packages
-  - Pricing information
-  - Service descriptions
-  - Maintenance recommendations
-
-- **Booking Management**
-  - View booking history
-  - Track service status
-  - Cancel or modify bookings
-  - Service cost estimation
 
 - **AI-Powered Assistance**
-  - Service recommendations
+  - Smart service recommendations
   - Diagnostic insights
   - Chat support
-  - Maintenance tips
+  - Cost estimation
 
-### Admin Features
+- **Service Management**
+  - Real-time service status tracking
+  - Booking history
+  - Service cost calculator
+  - Detailed service information
+
+### For Administrators
 - **Staff Management**
-  - Add/remove staff members
-  - Track staff duties
-  - Manage staff information
+  - Staff member registration
+  - Duty assignment
+  - Performance tracking
 
 - **Inventory Management**
-  - Add/update/delete inventory items
-  - Bulk import via CSV
-  - Stock alerts
+  - Stock tracking
+  - Low stock alerts
   - Inventory analytics
-  - Search and filter functionality
-  - Export to CSV
+  - Bulk import/export
 
 - **Booking Management**
-  - View all bookings
-  - Update booking status
-  - Manage service schedules
+  - Service status updates
+  - Customer booking overview
+  - Service scheduling
 
-## Installation
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.8 or higher
+- pip (Python package installer)
+
+### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Vehicle_Services_System.git
+git clone https://github.com/uchiha_byte/Vehicle_Services_System.git
 cd Vehicle_Services_System
 ```
 
@@ -72,52 +69,91 @@ GEMINI_API_KEY=your_api_key_here
 streamlit run app.py
 ```
 
-## Database Structure
+## 💻 Technology Stack
 
-### Main Database (vehicle_service.db)
-- **staff**: Staff information and management
-- **bookings**: Service booking records
+- **Frontend**: Streamlit
+- **Backend**: Python
+- **Database**: SQLite
+- **AI Integration**: Google Gemini AI
+- **Data Visualization**: Plotly
+- **Data Processing**: Pandas
 
-### Inventory Database (inventory.db)
-- **inventory**: Stock items and their details
-- **inventory_history**: Track changes to inventory items
+## 📁 Project Structure
 
-## Usage
+```
+Vehicle_Services_System/
+├── app.py                 # Main application file
+├── api.env               # Environment variables
+├── requirements.txt      # Project dependencies
+├── vehicle_service.db    # Main database
+├── inventory.db         # Inventory database
+└── static/
+    └── style.css        # Custom styling
+```
 
-### Customer Access
-1. Click "Customer Access" on the home page
-2. Choose from available services:
-   - Book Service
-   - View Booking History
-   - Check Service Status
-   - Use Cost Calculator
-   - Access Chat Support
-   - View Service Information
+## 🔧 Configuration
 
-### Admin Access
-1. Click "Admin Access" on the home page
-2. Access different management sections:
-   - Staff Management
-   - Inventory Management
-   - Booking Management
-   - AI Assistant
+### Database Setup
+The system uses two SQLite databases:
+- `vehicle_service.db`: Stores user data, bookings, and staff information
+- `inventory.db`: Manages inventory items and their history
 
-## Inventory Management
+### Environment Variables
+Create an `api.env` file with the following:
+```
+GEMINI_API_KEY=your_gemini_api_key
+```
 
-### Adding Items
-1. Go to Admin Dashboard > Inventory Management
-2. Use "Add Items" tab to:
-   - Add single items manually
-   - Import multiple items via CSV
+## 👥 User Roles
 
-### Managing Inventory
-- Search and filter items
-- Update quantities and prices
-- View stock alerts
-- Monitor inventory analytics
-- Export inventory data
+### Customer
+- Book services
+- View booking history
+- Track service status
+- Use AI assistance
+- Calculate service costs
 
-## Contributing
+### Administrator
+- Manage staff
+- Monitor inventory
+- Update service status
+- View analytics
+- Access AI-powered insights
+
+## 🔐 Security Features
+
+- Password hashing
+- Role-based access control
+- Secure session management
+- Input validation
+
+## 📊 Features in Detail
+
+### Service Booking
+- Vehicle type selection (Car/Motorcycle)
+- Service type selection
+- Time slot booking
+- Additional notes and requirements
+
+### AI Integration
+- Service recommendations
+- Diagnostic insights
+- Chat support
+- Staff assistance
+
+### Inventory Management
+- Stock tracking
+- Low stock alerts
+- Inventory analytics
+- Bulk operations
+
+### Analytics Dashboard
+- Service statistics
+- Inventory insights
+- Staff performance metrics
+- Revenue tracking
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -125,12 +161,18 @@ streamlit run app.py
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## License
+## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 👨‍💻 Author
 
+Your Name
+- GitHub: [@yourusername](https://github.com/uchiha_byte)
+- Email: your.email@example.com
+
+## 🙏 Acknowledgments
+
+- Google Gemini AI for providing the AI capabilities
 - Streamlit for the web framework
-- Google Gemini AI for AI-powered features
-- SQLite for database management 
+- All contributors who have helped shape this project 
