@@ -1756,7 +1756,14 @@ def show_bike_service_form():
                 st.error(f"Error booking service: {str(e)}")
 
 def show_customer_dashboard():
-    st.title("AUTO ASSIST AND BOOKING SYSTEM")
+    # Create columns for logo and title
+    col1, col2 = st.columns([1, 4])
+    
+    with col1:
+        # Add logo image
+       st.image("D:\\Vehicle_Services_System\\static\\images\\Logo.png", width=250)
+    with col2:
+        st.title("AUTO ASSIST AND BOOKING SYSTEM")
     
     # Add logout button in the top right
     col1, col2 = st.columns([6, 1])
@@ -2793,7 +2800,16 @@ def authenticate_user(username, password):
 
 def show_login_page():
     """Show the login page"""
-    st.title("AUTO ASSIST AND BOOKING SYSTEM")
+    # Create columns for logo and title
+    col1, col2 = st.columns([1, 4])
+    
+    with col1:
+        # Add logo image
+        st.image("D:\\Vehicle_Services_System\\static\\images\\Logo.png", width=500)
+
+    
+    with col2:
+        st.title("AUTO ASSIST AND BOOKING SYSTEM")
     
     # Simple toggle button for role selection
     role = st.toggle("👨‍💼 Admin Mode", value=False, help="Toggle for Admin/Customer access")
