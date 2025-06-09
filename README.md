@@ -64,8 +64,8 @@ A comprehensive vehicle service management system built with Streamlit and Pytho
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/uchiha_byte/Vehicle_Services_System.git
-cd Vehicle_Services_System
+git clone https://github.com/Uchiha_byte/Smart_Vehicle_Services_System.git
+cd Smart_Vehicle_Services_System
 ```
 
 2. Install required packages:
