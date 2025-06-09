@@ -196,8 +196,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-Your Name
-- GitHub: (https://github.com/uchiha_byte)
+- GitHub: (https://github.com/Uchiha_byte)
 - Email: uchihabyte.git@gmail.com
 
 ## 🙏 Acknowledgments
