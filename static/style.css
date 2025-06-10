@@ -125,6 +125,33 @@ button:active {
     color: var(--error-color);
     font-weight: bold;
 }
+/***********************************************************************************************/
+.stMainBlockContainer.block-container.st-emotion-cache-zy6yx3.en45cdb4 {
+    padding: 30px !important; /* Using !important to ensure override */
+  }
+  .stHorizontalBlock.st-emotion-cache-ocqkz7 {
+    justify-content: space-evenly; /* Or use space-between or space-around */
+  }
+  .stColumn.st-emotion-cache-jsyqn3.e1lln2w82 {
+    width: 10px; /* Set a fixed width */
+    height: 0px; /* Set a fixed height */
+    /* Or use relative units */
+    /* width: 50%; */ /* 50% of parent's width */
+    /* height: 20vh; */ /* 20% of the viewport height */
+  }
+  .stHorizontalBlock.st-emotion-cache-ocqkz7.e1lln2w80 {
+    /* flex-grow, flex-shrink, flex-basis */
+    flex: 0 0 0px; /* Example: Don't grow, don't shrink, initial size 300px */
+  }
+  .stColumn.st-emotion-cache-1cn6kuh.e1lln2w82 {
+  flex-basis: 60%; /* Adjust this value to control the width */
+  /* You could also use width, but flex-basis is generally preferred for flex items */
+  /* width: 60%; */
+
+  /* Consider flex-grow and flex-shrink if you want it to adapt to space */
+  /* flex-grow: 0; */
+  /* flex-shrink: 1; */
+}
 
 /* Booking Cards */
 .booking-card {
@@ -170,23 +197,130 @@ button:active {
 }
 
 /* Chat Interface */
-.chat-message {
-    background-color: var(--surface-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+.stChatMessage {
+    background-color: #f8f9fa;
+    border-radius: 15px;
     padding: 1rem;
     margin-bottom: 1rem;
-    max-width: 80%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
 }
 
-.chat-message.user {
-    background-color: var(--primary-color);
-    margin-left: auto;
+.stChatMessage:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.chat-message.assistant {
-    background-color: var(--surface-color);
-    margin-right: auto;
+/* User message styling */
+.stChatMessage [data-testid="chatAvatarIcon-user"] {
+    background-color: var(--primary-color) !important;
+    border-radius: 50%;
+    padding: 5px;
+}
+
+/* Assistant message styling */
+.stChatMessage [data-testid="chatAvatarIcon-assistant"] {
+    background-color: #f0f2f5 !important;
+    border-radius: 50%;
+    padding: 5px;
+}
+
+/* Chat input styling */
+.stChatInputContainer {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 20px !important;
+    border: 1px solid #e0e0e0 !important;
+    padding: 10px 20px !important;
+    transition: all 0.3s ease;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1) !important;
+}
+
+/* Button styling for AI Chat Support */
+.stButton > button {
+    background-color: #0d6efd !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.9rem !important;
+    transition: all 0.2s ease !important;
+    font-weight: 400 !important;
+    min-height: unset !important;
+    width: auto !important;
+    margin: 0.2rem !important;
+}
+
+.stButton > button:hover {
+    background-color: #0b5ed7 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Quick action buttons in horizontal blocks */
+div[data-testid="stHorizontalBlock"] .stButton > button {
+    width: 100% !important;
+    margin: 0.2rem 0 !important;
+}
+
+/* Clear chat button - keep same style as other buttons for consistency */
+div[data-testid="stVerticalBlock"] > div:last-child .stButton > button {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+
+div[data-testid="stVerticalBlock"] > div:last-child .stButton > button:hover {
+    background-color: #0b5ed7 !important;
+}
+
+/* Header styling */
+h1, h2, h3 {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+/* Subheader styling */
+.stSubheader {
+    font-size: 1.2rem;
+    color: var(--text-color);
+    margin: 1.5rem 0 1rem 0;
+}
+
+/* Chat container spacing */
+div[data-testid="stVerticalBlock"] > div {
+    margin-bottom: 1.5rem;
+}
+
+/* Markdown text styling */
+.stMarkdown {
+    line-height: 1.6;
+}
+
+/* Divider styling */
+hr {
+    border: 0;
+    height: 1px;
+    background: #e0e0e0;
+    margin: 2rem 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .stButton > button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stChatMessage {
+        margin: 0.5rem 0;
+        padding: 0.75rem;
+    }
 }
 
 /* Tables */
@@ -582,4 +716,29 @@ button:active {
     .service-category {
         padding: 1rem;
     }
+}
+
+.main-title {
+    background: linear-gradient(45deg, #2563eb, #1d4ed8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: 1px;
+}
+
+.title-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 1rem;
+    margin: 1rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 } 
