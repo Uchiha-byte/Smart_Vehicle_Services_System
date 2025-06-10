@@ -1112,39 +1112,186 @@ def show_admin_dashboard():
 
 def show_booking_history(customer_name=None):
     st.header("Your Booking History")
+    
+    # Dark theme container for the entire section
+    st.markdown("""
+        <style>
+        .booking-history-container {
+            background-color: #0f172a;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .booking-card {
+            background-color: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .booking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+        .status-pending {
+            background-color: #854d0e;
+            color: #fef3c7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .status-in-progress {
+            background-color: #1d4ed8;
+            color: #e0f2fe;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .status-completed {
+            background-color: #15803d;
+            color: #dcfce7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .status-cancelled {
+            background-color: #991b1b;
+            color: #fee2e2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .booking-details {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .service-tag {
+            background-color: #334155;
+            color: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            display: inline-block;
+            font-size: 0.875rem;
+        }
+        .vehicle-info {
+            background-color: #334155;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     if not customer_name:
-        customer_name = st.text_input("Enter your name to view bookings")
+        customer_name = st.text_input("Enter your name to view bookings", 
+                                    placeholder="Enter your full name as used during booking")
     
     if customer_name:
         conn = sqlite3.connect('vehicle_service.db')
         customer_bookings = pd.read_sql_query(
-            "SELECT * FROM bookings WHERE customer_name=? ORDER BY booking_date DESC", 
+            """
+            SELECT * FROM bookings 
+            WHERE customer_name=? 
+            ORDER BY 
+                CASE 
+                    WHEN status = 'In Progress' THEN 1
+                    WHEN status = 'Pending' THEN 2
+                    WHEN status = 'Completed' THEN 3
+                    WHEN status = 'Cancelled' THEN 4
+                END,
+                booking_date DESC
+            """, 
             conn, 
             params=(customer_name,)
         )
         conn.close()
         
         if not customer_bookings.empty:
-            for _, booking in customer_bookings.iterrows():
-                status_class = f"status-{booking['status'].lower()}"
-                st.markdown(f"""
-                <div class="booking-card">
-                    <h4>Booking ID: {booking['booking_id']}</h4>
-                    <p><strong>Date:</strong> {booking['booking_date']}</p>
-                    <p><strong>Vehicle:</strong> {booking['vehicle_type']}</p>
-                    <p><strong>Service Type:</strong> {booking['service_type']}</p>
-                    <p><strong>Time Slot:</strong> {booking['time_slot']}</p>
-                    <p><strong>Status:</strong> <span class="booking-status {status_class}">{booking['status']}</span></p>
-                    <details>
-                        <summary>Service Details</summary>
-                        <p>{booking['description'].replace(chr(10), '<br>')}</p>
-                    </details>
-                </div>
-                """, unsafe_allow_html=True)
+            # Group bookings by status
+            active_bookings = customer_bookings[customer_bookings['status'].isin(['Pending', 'In Progress'])]
+            completed_bookings = customer_bookings[customer_bookings['status'] == 'Completed']
+            cancelled_bookings = customer_bookings[customer_bookings['status'] == 'Cancelled']
+            
+            st.markdown('<div class="booking-history-container">', unsafe_allow_html=True)
+            
+            # Display active bookings first
+            if not active_bookings.empty:
+                st.subheader("🔄 Active Bookings")
+                for _, booking in active_bookings.iterrows():
+                    display_booking_card(booking)
+            
+            # Display completed bookings
+            if not completed_bookings.empty:
+                st.subheader("✅ Completed Services")
+                for _, booking in completed_bookings.iterrows():
+                    display_booking_card(booking)
+            
+            # Display cancelled bookings
+            if not cancelled_bookings.empty:
+                st.subheader("❌ Cancelled Bookings")
+                for _, booking in cancelled_bookings.iterrows():
+                    display_booking_card(booking)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.info("You have no bookings yet")
+            st.info("You have no bookings yet. Would you like to [book a service](/book_service)?")
     else:
         st.info("Please enter your name to view your booking history")
+
+def display_booking_card(booking):
+    # Convert service items from string to list if it exists
+    service_items = booking['service_items'].split(',') if booking['service_items'] else []
+    
+    # Create the last service info string conditionally
+    last_service_info = ""
+    if booking["last_service_date"] and booking["last_service_km"]:
+        last_service_info = f'<p><strong>Last Service:</strong> {booking["last_service_date"]} ({booking["last_service_km"]} KM)</p>'
+    
+    st.markdown(f"""
+        <div class="booking-card">
+            <div class="booking-header">
+                <div>
+                    <h3 style="color: #e2e8f0; margin: 0;">Booking #{booking['booking_id']}</h3>
+                    <p style="color: #94a3b8; margin: 5px 0;">
+                        {booking['booking_date']} | {booking['time_slot']}
+                    </p>
+                </div>
+                <span class="status-{booking['status'].lower().replace(' ', '-')}">
+                    {booking['status']}
+                </span>
+            </div>
+            
+            <div class="vehicle-info">
+                <p style="color: #e2e8f0; margin: 0;">
+                    🚗 {booking['vehicle_type']} | 
+                    📝 {booking['vehicle_number']}
+                </p>
+            </div>
+            
+            <div class="booking-details">
+                <p><strong>Service Type:</strong> {booking['service_type']}</p>
+                
+                {f'<div style="margin: 10px 0;"><strong>Service Items:</strong><br/>' + 
+                ''.join([f'<span class="service-tag">{item.strip()}</span>' for item in service_items]) + 
+                '</div>' if service_items else ''}
+                
+                {f'<p><strong>Description:</strong><br/>{booking["description"]}</p>' 
+                if booking["description"] else ''}
+                
+                {f'<p><strong>Additional Notes:</strong><br/>{booking["additional_notes"]}</p>'
+                if booking["additional_notes"] else ''}
+                
+                {last_service_info}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 def get_vehicle_data():
     return {
@@ -1756,14 +1903,24 @@ def show_bike_service_form():
                 st.error(f"Error booking service: {str(e)}")
 
 def show_customer_dashboard():
+    # Add custom font
+    st.markdown("""
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    """, unsafe_allow_html=True)
+    
     # Create columns for logo and title
     col1, col2 = st.columns([1, 4])
     
     with col1:
         # Add logo image
-       st.image("D:\\Vehicle_Services_System\\static\\images\\Logo.png", width=250)
+        st.image("D:\\Vehicle_Services_System\\static\\images\\Logo.png", width=250)
+    
     with col2:
-        st.title("AUTO ASSIST AND BOOKING SYSTEM")
+        st.markdown("""
+            <div class="title-container">
+                <h1 class="main-title">AUTO ASSIST AND BOOKING SYSTEM</h1>
+            </div>
+        """, unsafe_allow_html=True)
     
     # Add logout button in the top right
     col1, col2 = st.columns([6, 1])
@@ -1840,8 +1997,8 @@ def show_customer_dashboard():
         with row3_col1:
             st.markdown("""
             <div class="service-card">
-                <h3>💬 Chat Support</h3>
-                <p>Get instant help from our support team</p>
+                <h3>💬 AI Chat Support</h3>
+                <p>Get instant help from our AI chatbot</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Start Chat", key="chat_support", use_container_width=True):
@@ -1870,211 +2027,292 @@ def show_customer_dashboard():
         with service_tabs[0]:  # Car Services
             st.markdown("### Car Maintenance & Services")
             
-            # Regular Maintenance
-            with st.expander("Regular Maintenance", expanded=True):
-                st.markdown("""
-                #### Basic Service Package
-                - Engine Oil Change
-                - Oil Filter Replacement
-                - Air Filter Cleaning
-                - General Inspection
-                """)
-                st.markdown("**Starting at ₹2,000**")
-                
-                st.markdown("""
-                #### Standard Service Package
-                - All Basic Service Items
-                - Brake System Check
-                - Wheel Alignment
-                - Battery Check
-                - Tire Rotation
-                """)
-                st.markdown("**Starting at ₹4,000**")
-                
-                st.markdown("""
-                #### Premium Service Package
-                - All Standard Service Items
-                - Complete Diagnostics
-                - Detailed Inspection
-                - Interior Cleaning
-                - Performance Check
-                """)
-                st.markdown("**Starting at ₹6,000**")
+            # Add image column layout
+            img_col, content_col = st.columns([1, 2])
+            with img_col:
+                st.image("https://www.shutterstock.com/image-photo/portrait-shot-handsome-mechanic-working-600nw-1711144648.jpg",
+                        caption="Professional Car Services",
+                        use_container_width=True)
+                st.image("https://media.istockphoto.com/id/1350239751/photo/car-diagnostic-service-and-electronics-repair.jpg?s=612x612&w=0&k=20&c=6xSgzMp9KJJ8lN0hC1UcuqXuuZMLNFCgCkcju-Q0BTU=",
+                        caption="Engine Diagnostics",
+                        use_container_width=True)
+                st.image("https://media.istockphoto.com/id/522394158/photo/car-service-procedure.jpg?s=612x612&w=0&k=20&c=SXPyg7yMw0Uc4LuI59lchMouvjJ3z6r5oNKO7mdnHCc=",
+                        caption="Brake Service",
+                        use_container_width=True)
             
-            # Repair Services
-            with st.expander("Repair Services", expanded=True):
-                st.markdown("""
-                #### Engine & Transmission
-                - Engine Diagnostics
-                - Engine Overhaul
-                - Transmission Service
-                - Clutch Replacement
-                """)
+            with content_col:
+                # Regular Maintenance
+                with st.expander("Regular Maintenance", expanded=True):
+                    st.markdown("""
+                    #### Basic Service Package
+                    - Engine Oil Change
+                    - Oil Filter Replacement
+                    - Air Filter Cleaning
+                    - General Inspection
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹2,000</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Standard Service Package
+                    - All Basic Service Items
+                    - Brake System Check
+                    - Wheel Alignment
+                    - Battery Check
+                    - Tire Rotation
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹4,000</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Premium Service Package
+                    - All Standard Service Items
+                    - Complete Diagnostics
+                    - Detailed Inspection
+                    - Interior Cleaning
+                    - Performance Check
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹6,000</span></p>
+                    </div>""", unsafe_allow_html=True)
                 
-                st.markdown("""
-                #### Electrical & AC
-                - Electrical System Repair
-                - AC Service & Repair
-                - Battery Replacement
-                - Wiring Harness Repair
-                """)
+                # Repair Services
+                with st.expander("Repair Services", expanded=True):
+                    st.markdown("""
+                    #### Engine & Transmission
+                    - Engine Diagnostics
+                    - Engine Overhaul
+                    - Transmission Service
+                    - Clutch Replacement
+                    """)
+                    
+                    st.markdown("""
+                    #### Electrical & AC
+                    - Electrical System Repair
+                    - AC Service & Repair
+                    - Battery Replacement
+                    - Wiring Harness Repair
+                    """)
+                    
+                    st.markdown("""
+                    #### Brakes & Suspension
+                    - Brake System Service
+                    - Suspension Work
+                    - Wheel Alignment
+                    - Shock Absorber Replacement
+                    """)
                 
-                st.markdown("""
-                #### Brakes & Suspension
-                - Brake System Service
-                - Suspension Work
-                - Wheel Alignment
-                - Shock Absorber Replacement
-                """)
-            
-            # Body Work
-            with st.expander("Body Work", expanded=True):
-                st.markdown("""
-                #### Paint & Dent Work
-                - Paint Work
-                - Dent Removal
-                - Panel Replacement
-                - Glass Repair
-                """)
-                
-                st.markdown("""
-                #### Interior Work
-                - Upholstery Repair
-                - Dashboard Repair
-                - Carpet Replacement
-                - Interior Detailing
-                """)
+                # Body Work
+                with st.expander("Body Work", expanded=True):
+                    st.markdown("""
+                    #### Paint & Dent Work
+                    - Paint Work
+                    - Dent Removal
+                    - Panel Replacement
+                    - Glass Repair
+                    """)
+                    
+                    st.markdown("""
+                    #### Interior Work
+                    - Upholstery Repair
+                    - Dashboard Repair
+                    - Carpet Replacement
+                    - Interior Detailing
+                    """)
         
         with service_tabs[1]:  # Bike Services
             st.markdown("### Bike Maintenance & Services")
             
-            # Periodic Services
-            with st.expander("Periodic Services", expanded=True):
-                st.markdown("""
-                #### Basic Service Package
-                - Engine Oil Change
-                - Chain Lubrication
-                - Basic Inspection
-                - Tire Pressure Check
-                """)
-                st.markdown("**Starting at ₹1,000**")
-                
-                st.markdown("""
-                #### Standard Service Package
-                - All Basic Service Items
-                - Air Filter Cleaning
-                - Brake Adjustment
-                - Chain Adjustment
-                - Battery Check
-                """)
-                st.markdown("**Starting at ₹2,000**")
-                
-                st.markdown("""
-                #### Premium Service Package
-                - All Standard Service Items
-                - Complete Diagnostics
-                - Deep Cleaning
-                - Performance Tuning
-                - Carburetor Tuning
-                """)
-                st.markdown("**Starting at ₹3,000**")
+            # Add image column layout
+            img_col, content_col = st.columns([1, 2])
+            with img_col:
+                st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQtr_rx-dAiQPgS0XwEq-0_CuLy7Uahslx-ng&s",
+                        caption="Professional Bike Services",
+                        use_container_width=True)
+                st.image("https://wallup.net/wp-content/uploads/2019/09/744652-thunderbike-custom-chopper-bobber-bike-1tbike-motorbike-motorcycle-tuning.jpg",
+                        caption="Performance Tuning",
+                        use_container_width=True)
+                st.image("https://media.istockphoto.com/id/1954221485/photo/repairman-checking-scheme-of-motorcycle.jpg?s=612x612&w=0&k=20&c=w9o4m-YmpJalFxi0dGL3HDUwTacqt7uSQaxAtRIb3_k=",
+                        caption="Bike Maintenance",
+                        use_container_width=True)
             
-            # Repairs & Parts
-            with st.expander("Repairs & Parts", expanded=True):
-                st.markdown("""
-                #### Engine & Transmission
-                - Engine Overhaul
-                - Parts Replacement
-                - Chain & Sprocket Set
-                - Clutch Repair
-                """)
+            with content_col:
+                # Periodic Services
+                with st.expander("Periodic Services", expanded=True):
+                    st.markdown("""
+                    #### Basic Service Package
+                    - Engine Oil Change
+                    - Chain Lubrication
+                    - Basic Inspection
+                    - Tire Pressure Check
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹1,000</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Standard Service Package
+                    - All Basic Service Items
+                    - Air Filter Cleaning
+                    - Brake Adjustment
+                    - Chain Adjustment
+                    - Battery Check
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹2,000</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Premium Service Package
+                    - All Standard Service Items
+                    - Complete Diagnostics
+                    - Deep Cleaning
+                    - Performance Tuning
+                    - Carburetor Tuning
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'>Starting at <span style='color: #60a5fa; font-weight: 600;'>₹3,000</span></p>
+                    </div>""", unsafe_allow_html=True)
                 
-                st.markdown("""
-                #### Electrical & Performance
-                - Electrical Work
-                - Performance Tuning
-                - ECU Remapping
-                - Exhaust System
-                """)
-            
-            # Customization
-            with st.expander("Customization", expanded=True):
-                st.markdown("""
-                #### Performance Upgrades
-                - Performance Kits
-                - Exhaust Systems
-                - Air Filters
-                - ECU Tuning
-                """)
+                # Repairs & Parts
+                with st.expander("Repairs & Parts", expanded=True):
+                    st.markdown("""
+                    #### Engine & Transmission
+                    - Engine Overhaul
+                    - Parts Replacement
+                    - Chain & Sprocket Set
+                    - Clutch Repair
+                    """)
+                    
+                    st.markdown("""
+                    #### Electrical & Performance
+                    - Electrical Work
+                    - Performance Tuning
+                    - ECU Remapping
+                    - Exhaust System
+                    """)
                 
-                st.markdown("""
-                #### Cosmetic Modifications
-                - Paint Jobs
-                - Accessory Installation
-                - LED Kits
-                - Custom Graphics
-                """)
+                # Customization
+                with st.expander("Customization", expanded=True):
+                    st.markdown("""
+                    #### Performance Upgrades
+                    - Performance Kits
+                    - Exhaust Systems
+                    - Air Filters
+                    - ECU Tuning
+                    """)
+                    
+                    st.markdown("""
+                    #### Cosmetic Modifications
+                    - Paint Jobs
+                    - Accessory Installation
+                    - LED Kits
+                    - Custom Graphics
+                    """)
         
         with service_tabs[2]:  # Washing Packages
             st.markdown("### Washing & Detailing Services")
             
-            # Car Wash Packages
-            with st.expander("Car Wash Packages", expanded=True):
-                st.markdown("""
-                #### Basic Wash - ₹500
-                - Exterior Wash
-                - Tire Cleaning
-                - Basic Interior
-                - Window Cleaning
-                """)
-                
-                st.markdown("""
-                #### Premium Wash - ₹1,000
-                - All Basic Services
-                - Interior Detailing
-                - Dashboard Polishing
-                - Seat Cleaning
-                - Carpet Cleaning
-                - Waxing & Polishing
-                """)
-                
-                st.markdown("""
-                #### Deep Cleaning - ₹2,000
-                - All Premium Services
-                - Engine Bay Cleaning
-                - Underbody Wash
-                - Ceramic Coating
-                - Leather Treatment
-                - Odor Removal
-                """)
+            # Add image column layout
+            img_col, content_col = st.columns([1, 2])
+            with img_col:
+                st.image("https://5.imimg.com/data5/SELLER/Default/2022/2/WL/EW/HO/71120205/5-shampoo-copy-jpg.jpg",
+                        caption="Professional Washing Services",
+                        use_container_width=True)
+                st.image("https://cavallistables.com/wp-content/uploads/2020/09/professional-car-detailing-1200x675.jpg",
+                        caption="Interior Detailing",
+                        use_container_width=True)
+                st.image("https://media.istockphoto.com/id/958873882/photo/repair.jpg?s=612x612&w=0&k=20&c=ZWNKfZAKTr16vQjOE9VcXkToQaf3TzzV0eD-GJVCI5U=",
+                        caption="Exterior Polishing",
+                        use_container_width=True)
             
-            # Bike Wash Packages
-            with st.expander("Bike Wash Packages", expanded=True):
-                st.markdown("""
-                #### Basic Wash - ₹200
-                - Exterior Wash
-                - Chain Cleaning
-                - Basic Inspection
-                - Tire Cleaning
-                """)
+            with content_col:
+                # Car Wash Packages
+                with st.expander("Car Wash Packages", expanded=True):
+                    st.markdown("""
+                    #### Basic Wash - ₹500
+                    - Exterior Wash
+                    - Tire Cleaning
+                    - Basic Interior
+                    - Window Cleaning
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'><span style='color: #60a5fa; font-weight: 600;'>₹500</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Premium Wash
+                    - All Basic Services
+                    - Interior Detailing
+                    - Dashboard Polishing
+                    - Seat Cleaning
+                    - Carpet Cleaning
+                    - Waxing & Polishing
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'><span style='color: #60a5fa; font-weight: 600;'>₹1,000</span></p>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    #### Deep Cleaning
+                    - All Premium Services
+                    - Engine Bay Cleaning
+                    - Underbody Wash
+                    - Ceramic Coating
+                    - Leather Treatment
+                    - Odor Removal
+                    """)
+                    st.markdown("""<div style='background-color: #1e293b; padding: 5px 15px; border-radius: 15px; 
+                        text-align: center; width: fit-content; margin: 5px 0; border: 1px solid #334155; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                        <p style='color: #e2e8f0; margin: 0; font-size: 15px;'><span style='color: #60a5fa; font-weight: 600;'>₹2,000</span></p>
+                    </div>""", unsafe_allow_html=True)
                 
-                st.markdown("""
-                #### Premium Wash - ₹500
-                - All Basic Services
-                - Deep Cleaning
-                - Polishing
-                - Chain Lubrication
-                - Tire Dressing
-                """)
-                
-                st.markdown("""
-                #### Deep Cleaning - ₹1,000
-                - All Premium Services
-                - Engine Cleaning
-                - Metal Polishing
-                - Ceramic Coating
-                - Paint Protection
-                """)
+                # Bike Wash Packages
+                with st.expander("Bike Wash Packages", expanded=True):
+                    st.markdown("""
+                    #### Basic Wash - ₹200
+                    - Exterior Wash
+                    - Chain Cleaning
+                    - Basic Inspection
+                    - Tire Cleaning
+                    """)
+                    
+                    st.markdown("""
+                    #### Premium Wash - ₹500
+                    - All Basic Services
+                    - Deep Cleaning
+                    - Polishing
+                    - Chain Lubrication
+                    - Tire Dressing
+                    """)
+                    
+                    st.markdown("""
+                    #### Deep Cleaning - ₹1,000
+                    - All Premium Services
+                    - Engine Cleaning
+                    - Metal Polishing
+                    - Ceramic Coating
+                    - Paint Protection
+                    """)
 
     elif st.session_state.current_page == 'book_service':
         show_initial_booking_form()
@@ -2224,13 +2462,119 @@ def show_customer_dashboard():
             """)
 
 def show_service_calculator():
-    st.header("Service Cost Calculator")
-    st.markdown("Estimate the cost of your service with our interactive calculator")
+    # Add custom CSS for the calculator
+    st.markdown("""
+        <style>
+        .calculator-header {
+            background-color: #0f172a;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            color: white;
+            text-align: center;
+            border: 1px solid #1e293b;
+        }
+        .calculator-header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .calculator-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        .service-option {
+            background-color: #1e293b;
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            margin-bottom: 1rem;
+        }
+        .cost-summary {
+            background-color: #0f172a;
+            padding: 1.5rem;
+            border-radius: 15px;
+            color: white;
+            border: 1px solid #1e293b;
+        }
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        .total-cost {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #60a5fa;
+            text-align: center;
+            padding: 1rem;
+            background-color: #1e293b;
+            border-radius: 10px;
+            margin-top: 1rem;
+            border: 1px solid #334155;
+        }
+        .service-checkbox {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 5px;
+        }
+        .service-checkbox:hover {
+            background-color: #1e293b;
+        }
+        .dark-card {
+            background-color: #1e293b;
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid #334155;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+        .dark-card h3 {
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+        }
+        .disclaimer {
+            background-color: #1e293b;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #334155;
+        }
+        .disclaimer p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        .disclaimer ul {
+            color: #94a3b8;
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Calculator Header
+    st.markdown("""
+        <div class="calculator-header">
+            <h1>💰 Service Cost Calculator</h1>
+            <p>Get an instant estimate for your vehicle service</p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Create two columns for the main layout
     col1, col2 = st.columns([2, 1])
     
     with col1:
+        # Vehicle Selection Section
+        st.markdown("""
+            <div class="dark-card">
+                <h3>Vehicle Details</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
         # Vehicle Type Selection with icons
         vehicle_type = st.selectbox(
             "Select Vehicle Type",
@@ -2274,9 +2618,13 @@ def show_service_calculator():
         additional_cost = 0
         selected_items = []
         
+        st.markdown("""
+            <div class="dark-card">
+                <h3>Service Options</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
         if service_type == "Regular Maintenance":
-            st.subheader("Maintenance Items")
-            
             # Create columns for maintenance items
             maint_col1, maint_col2 = st.columns(2)
             
@@ -2299,13 +2647,11 @@ def show_service_calculator():
                     ]
                 
                 for item, cost, icon in items:
-                    if st.checkbox(f"{icon} {item} (₹{cost})"):
+                    if st.checkbox(f"{icon} {item}", help=f"Cost: ₹{cost}"):
                         additional_cost += cost
                         selected_items.append((item, cost))
         
         elif service_type == "Repair":
-            st.subheader("Repair Items")
-            
             # Repair Categories
             repair_categories = list(repair_types[vehicle_type].keys())
             selected_category = st.selectbox(
@@ -2326,19 +2672,13 @@ def show_service_calculator():
                 "Body": 1000
             }
             
-            # Create columns for repair items
-            repair_col1, repair_col2 = st.columns(2)
-            
-            with repair_col1:
-                for item in repair_items:
-                    cost = repair_costs.get(selected_category, 1000)
-                    if st.checkbox(f"🔧 {item} (₹{cost})"):
-                        additional_cost += cost
-                        selected_items.append((item, cost))
+            for item in repair_items:
+                cost = repair_costs.get(selected_category, 1000)
+                if st.checkbox(f"🔧 {item}", help=f"Cost: ₹{cost}"):
+                    additional_cost += cost
+                    selected_items.append((item, cost))
         
         elif service_type == "Washing":
-            st.subheader("Washing Services")
-            
             if vehicle_type == "Car":
                 packages = [
                     ("Basic Wash", 500, ["Exterior Wash", "Tire Cleaning", "Basic Interior"], "🧹"),
@@ -2366,45 +2706,70 @@ def show_service_calculator():
     
     with col2:
         # Cost Summary Card
-        st.markdown("### Cost Summary")
-        
-        # Create a container for the cost summary
-        with st.container():
-            # Base Cost
-            st.markdown("#### Base Cost")
-            st.markdown(f"**₹{base_cost}**")
-            
-            # Additional Services
-            st.markdown("#### Additional Services")
-            st.markdown(f"**₹{additional_cost}**")
-            
-            # Divider
-            st.markdown("---")
-            
-            # Total Cost
-            st.markdown("### Total Cost")
-            st.markdown(f"**₹{base_cost + additional_cost}**")
+        st.markdown("""
+            <div class="cost-summary">
+                <h3 style='color: #e2e8f0; margin-bottom: 1rem; text-align: center;'>Cost Summary</h3>
+                <div class="cost-item">
+                    <span>Base Service Cost</span>
+                    <span>₹{}</span>
+                </div>
+                <div class="cost-item">
+                    <span>Additional Services</span>
+                    <span>₹{}</span>
+                </div>
+                <div class="total-cost">
+                    Total Estimate: ₹{}
+                </div>
+            </div>
+        """.format(base_cost, additional_cost, base_cost + additional_cost), unsafe_allow_html=True)
         
         # Selected Services List
         if selected_items:
-            st.markdown("### Selected Services")
+            st.markdown("""
+                <div class="dark-card">
+                    <h3>Selected Services</h3>
+                </div>
+            """, unsafe_allow_html=True)
             for item, cost in selected_items:
                 if cost > 0:
-                    st.markdown(f"- {item} (₹{cost})")
+                    st.markdown(f"<div style='color: #e2e8f0;'>- {item} (₹{cost})</div>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"- {item}")
+                    st.markdown(f"<div style='color: #e2e8f0;'>- {item}</div>", unsafe_allow_html=True)
         
         # Disclaimer
-        st.info("""
-        **Note:** This is an estimated cost. Final cost may vary based on:
-        - Actual service requirements
-        - Parts needed
-        - Additional issues found during inspection
-        - Vehicle condition
-        """)
+        st.markdown("""
+            <div class="disclaimer">
+                <p>
+                    <strong style='color: #e2e8f0;'>Note:</strong> This is an estimated cost. Final cost may vary based on:
+                    <ul>
+                        <li>Actual service requirements</li>
+                        <li>Parts needed</li>
+                        <li>Additional issues found during inspection</li>
+                        <li>Vehicle condition</li>
+                    </ul>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Book Now Button
-        if st.button("📝 Book This Service", use_container_width=True):
+        # Book Now Button with custom styling
+        st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button {
+                background-color: #3b82f6;
+                color: white;
+                padding: 0.75rem 2rem;
+                font-weight: bold;
+                border: none;
+                border-radius: 5px;
+                width: 100%;
+            }
+            div[data-testid="stButton"] > button:hover {
+                background-color: #2563eb;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        if st.button("📝 Book This Service", key="book_service_btn", use_container_width=True):
             st.session_state.current_page = 'book_service'
             st.rerun()
 
