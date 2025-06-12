@@ -203,4 +203,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Google Gemini AI for providing the AI capabilities
 - Streamlit for the web framework
-- All contributors who have helped shape this project 
