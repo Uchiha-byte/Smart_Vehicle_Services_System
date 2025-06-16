@@ -2338,127 +2338,489 @@ def show_customer_dashboard():
     elif st.session_state.current_page == 'service_info':
         st.header("Service Information")
         
-        # Car Services
-        st.subheader("🚗 Car Services")
-        car_services_tab1, car_services_tab2, car_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
+        # Add custom CSS for service cards and animations
+        st.markdown("""
+        <style>
+        /* Toggle Button Styles */
+        div[data-testid="stRadio"] > div {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            margin: 1rem 0;
+        }
+        div[data-testid="stRadio"] > div > label {
+            padding: 0.75rem 2rem !important;
+            border-radius: 25px !important;
+            background: transparent !important;
+            color: #60a5fa !important;
+            font-weight: 600 !important;
+            border: 2px solid #60a5fa !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            margin: 0 !important;
+            min-width: 150px !important;
+            text-align: center !important;
+        }
+        div[data-testid="stRadio"] > div > label:hover {
+            background: rgba(96, 165, 250, 0.1) !important;
+            transform: translateY(-2px) !important;
+        }
+        div[data-testid="stRadio"] > div > label[data-checked="true"] {
+            background: #60a5fa !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Vehicle Type Toggle
+        vehicle_type = st.radio(
+            "Select Vehicle Type",
+            ["Car Services", "Bike Services"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
+        if vehicle_type == "Car Services":
+            st.subheader("🚗 Car Services")
+            car_services_tab1, car_services_tab2, car_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
+            
+            with car_services_tab1:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Basic Service Package</h3>
+                            <span class="service-badge">Most Popular</span>
+                        </div>
+                        <div class="service-price">Starting at ₹2,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>Engine Oil Change with Premium Oil</li>
+                                <li>Oil Filter Replacement</li>
+                                <li>Comprehensive General Inspection</li>
+                                <li>Battery Health Check</li>
+                                <li>Tire Pressure & Condition Check</li>
+                                <li>Basic Fluid Level Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Standard Service Package</h3>
+                            <span class="service-badge">Recommended</span>
+                        </div>
+                        <div class="service-price">Starting at ₹4,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Basic Service Items</li>
+                                <li>Air Filter Cleaning & Replacement</li>
+                                <li>Complete Brake System Check</li>
+                                <li>Precision Wheel Alignment</li>
+                                <li>Comprehensive Fluid Level Check</li>
+                                <li>Belt & Hose Inspection</li>
+                                <li>Exhaust System Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Premium Service Package</h3>
+                            <span class="service-badge">Best Value</span>
+                        </div>
+                        <div class="service-price">Starting at ₹6,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Standard Service Items</li>
+                                <li>Advanced Computer Diagnostics</li>
+                                <li>Detailed 50-Point Inspection</li>
+                                <li>Professional Interior Cleaning</li>
+                                <li>Performance Optimization</li>
+                                <li>Complete AC System Service</li>
+                                <li>Fuel System Cleaning</li>
+                                <li>Transmission Fluid Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=500", caption="Professional Car Service", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Engine Maintenance", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Premium Service", use_column_width=True)
+            
+            with car_services_tab2:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Engine & Transmission</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Advanced Engine Diagnostics & Repair</li>
+                                <li>Complete Engine Overhaul</li>
+                                <li>Transmission Service & Repair</li>
+                                <li>Clutch System Replacement</li>
+                                <li>Timing Belt & Chain Service</li>
+                                <li>Engine Mount Replacement</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Electrical & AC</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Complete Electrical System Repair</li>
+                                <li>AC System Service & Repair</li>
+                                <li>Battery & Charging System Service</li>
+                                <li>Wiring Harness Repair</li>
+                                <li>Alternator & Starter Service</li>
+                                <li>ECU Diagnostics & Repair</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Brakes & Suspension</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Complete Brake System Service</li>
+                                <li>Advanced Suspension Work</li>
+                                <li>Precision Wheel Alignment</li>
+                                <li>Shock Absorber Replacement</li>
+                                <li>Steering System Service</li>
+                                <li>Brake Fluid Flush</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Engine Repair", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Electrical System", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Brake Service", use_column_width=True)
+            
+            with car_services_tab3:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Basic Wash</h3>
+                        <div class="service-price">₹500</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>Exterior Hand Wash</li>
+                                <li>Window Cleaning</li>
+                                <li>Tire & Wheel Cleaning</li>
+                                <li>Basic Interior Vacuum</li>
+                                <li>Dashboard Wipe</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Premium Wash</h3>
+                        <div class="service-price">₹1,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Basic Wash Items</li>
+                                <li>Interior Deep Cleaning</li>
+                                <li>Dashboard & Console Polish</li>
+                                <li>Leather Seat Cleaning</li>
+                                <li>Air Freshener</li>
+                                <li>Door Jamb Cleaning</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Deep Cleaning</h3>
+                        <div class="service-price">₹2,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Premium Wash Items</li>
+                                <li>Engine Bay Cleaning</li>
+                                <li>Paint Protection Treatment</li>
+                                <li>Professional Waxing</li>
+                                <li>Stain Removal</li>
+                                <li>Odor Treatment</li>
+                                <li>Interior Sanitization</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Basic Wash", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Premium Wash", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Deep Cleaning", use_column_width=True)
+
+        else:  # Bike Services
+            st.subheader("🏍️ Bike Services")
+            bike_services_tab1, bike_services_tab2, bike_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
+            
+            with bike_services_tab1:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Basic Service Package</h3>
+                            <span class="service-badge">Most Popular</span>
+                        </div>
+                        <div class="service-price">Starting at ₹1,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>Engine Oil Change</li>
+                                <li>Oil Filter Replacement</li>
+                                <li>Chain Cleaning & Lubrication</li>
+                                <li>Basic Inspection</li>
+                                <li>Tire Pressure Check</li>
+                                <li>Battery Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Standard Service Package</h3>
+                            <span class="service-badge">Recommended</span>
+                        </div>
+                        <div class="service-price">Starting at ₹2,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Basic Service Items</li>
+                                <li>Air Filter Cleaning</li>
+                                <li>Brake Adjustment</li>
+                                <li>Carburetor Tuning</li>
+                                <li>Battery Check</li>
+                                <li>Spark Plug Replacement</li>
+                                <li>Chain Tension Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <div class="service-header">
+                            <h3>Premium Service Package</h3>
+                            <span class="service-badge">Best Value</span>
+                        </div>
+                        <div class="service-price">Starting at ₹3,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Standard Service Items</li>
+                                <li>Complete Diagnostics</li>
+                                <li>Detailed Inspection</li>
+                                <li>Performance Tuning</li>
+                                <li>Electrical System Check</li>
+                                <li>Fuel System Cleaning</li>
+                                <li>Valve Clearance Check</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Basic Bike Service", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Standard Service", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Premium Service", use_column_width=True)
+            
+            with bike_services_tab2:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Engine & Transmission</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Engine Overhaul</li>
+                                <li>Clutch Service</li>
+                                <li>Gearbox Repair</li>
+                                <li>Chain & Sprocket Replacement</li>
+                                <li>Engine Tuning</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Electrical & Performance</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Electrical System Repair</li>
+                                <li>Battery Replacement</li>
+                                <li>Starter Motor Service</li>
+                                <li>Performance Tuning</li>
+                                <li>ECU Remapping</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Brakes & Suspension</h3>
+                        <div class="service-features">
+                            <ul>
+                                <li>Brake System Service</li>
+                                <li>Suspension Work</li>
+                                <li>Wheel Alignment</li>
+                                <li>Fork Service</li>
+                                <li>Shock Absorber Replacement</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Engine Service", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Electrical System", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Brake Service", use_column_width=True)
+            
+            with bike_services_tab3:
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Basic Wash</h3>
+                        <div class="service-price">₹300</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>Exterior Wash</li>
+                                <li>Chain Cleaning</li>
+                                <li>Basic Polish</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Premium Wash</h3>
+                        <div class="service-price">₹600</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Basic Wash Items</li>
+                                <li>Detailed Polish</li>
+                                <li>Chain Lubrication</li>
+                                <li>Metal Parts Polish</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="service-card">
+                        <h3>Deep Cleaning</h3>
+                        <div class="service-price">₹1,000</div>
+                        <div class="service-features">
+                            <ul>
+                                <li>All Premium Wash Items</li>
+                                <li>Engine Bay Cleaning</li>
+                                <li>Paint Protection</li>
+                                <li>Waxing</li>
+                                <li>Rust Treatment</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Basic Wash", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Premium Wash", use_column_width=True)
+                    st.image("https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=500", caption="Deep Cleaning", use_column_width=True)
+
+        # Additional Information
+        st.markdown("---")
+        st.subheader("Additional Information")
         
-        with car_services_tab1:
+        col1, col2 = st.columns(2)
+        with col1:
             st.markdown("""
-            #### Basic Service (₹2,000)
-            - Engine Oil Change
-            - Oil Filter Replacement
-            - General Inspection
-            
-            #### Standard Service (₹4,000)
-            - All Basic Service Items
-            - Air Filter Cleaning
-            - Brake Check
-            - Wheel Alignment
-            
-            #### Premium Service (₹6,000)
-            - All Standard Service Items
-            - Complete Diagnostics
-            - Detailed Inspection
-            - Interior Cleaning
+            ### Service Guarantee
+            - All services come with a 30-day warranty
+            - Free re-service if issues persist
+            - Quality assured by certified technicians
+            - Genuine parts used in all repairs
+            - 100% satisfaction guarantee
             """)
         
-        with car_services_tab2:
+        with col2:
             st.markdown("""
-            #### Available Repair Services
-            - Engine Repair
-            - Transmission Service
-            - Brake System Repair
-            - Suspension Work
-            - Electrical Systems
-            - AC Service & Repair
-            - Body Work & Painting
-            
-            *Actual costs will be provided after inspection*
-            """)
-            
-        with car_services_tab3:
-            st.markdown("""
-            #### Basic Wash Package (₹500)
-            - Exterior Wash
-            - Tire Cleaning
-            - Basic Interior Cleaning
-            - Window Cleaning
-            
-            #### Premium Wash Package (₹1,000)
-            - All Basic Wash Services
-            - Interior Detailing
-            - Dashboard Polishing
-            - Seat Cleaning
-            - Carpet Cleaning
-            - Waxing & Polishing
-            
-            #### Deep Cleaning Package (₹2,000)
-            - All Premium Wash Services
-            - Engine Bay Cleaning
-            - Underbody Wash
-            - Ceramic Coating
-            - Leather Treatment
-            - Odor Removal
+            ### Why Choose Us?
+            - State-of-the-art equipment
+            - Certified technicians
+            - Transparent pricing
+            - Quick turnaround time
+            - 24/7 customer support
+            - Convenient online booking
             """)
         
-        # Bike Services
-        st.subheader("🏍️ Bike Services")
-        bike_services_tab1, bike_services_tab2, bike_services_tab3 = st.tabs(["Regular Maintenance", "Repairs", "Washing Services"])
+        st.markdown("""
+        ### Booking Process
+        1. Select your vehicle type
+        2. Choose service package
+        3. Pick preferred date and time
+        4. Get instant confirmation
+        5. Track service status online
+        6. Receive service completion notification
+        """)
+
+        # Service Benefits
+        st.markdown("---")
+        st.subheader("Service Benefits")
         
-        with bike_services_tab1:
+        benefits_col1, benefits_col2, benefits_col3 = st.columns(3)
+        
+        with benefits_col1:
             st.markdown("""
-            #### Basic Service (₹1,000)
-            - Engine Oil Change
-            - Chain Lubrication
-            - Basic Inspection
-            
-            #### Standard Service (₹2,000)
-            - All Basic Service Items
-            - Air Filter Cleaning
-            - Brake Adjustment
-            - Chain Adjustment
-            
-            #### Premium Service (₹3,000)
-            - All Standard Service Items
-            - Complete Diagnostics
-            - Deep Cleaning
-            - Performance Tuning
+            ### 🛠️ Quality Service
+            - Expert technicians
+            - Latest diagnostic tools
+            - Genuine spare parts
+            - Quality workmanship
             """)
         
-        with bike_services_tab2:
+        with benefits_col2:
             st.markdown("""
-            #### Available Repair Services
-            - Engine Work
-            - Chain & Sprocket Replacement
-            - Clutch Repair
-            - Brake System Service
-            - Electrical Repairs
-            - Tire Services
-            - Paint Work
-            
-            *Actual costs will be provided after inspection*
+            ### 💰 Value for Money
+            - Competitive pricing
+            - Transparent costs
+            - No hidden charges
+            - Service packages
             """)
-            
-        with bike_services_tab3:
+        
+        with benefits_col3:
             st.markdown("""
-            #### Basic Wash Package (₹200)
-            - Exterior Wash
-            - Chain Cleaning
-            - Basic Inspection
-            
-            #### Premium Wash Package (₹500)
-            - All Basic Wash Services
-            - Deep Cleaning
-            - Polishing
-            - Chain Lubrication
-            - Tire Dressing
-            
-            #### Deep Cleaning Package (₹1,000)
-            - All Premium Wash Services
-            - Engine Cleaning
-            - Metal Polishing
-            - Ceramic Coating
-            - Paint Protection
+            ### ⏱️ Time Saving
+            - Quick service
+            - Online booking
+            - Status tracking
+            - Pick-up & delivery
             """)
 
 def show_service_calculator():
