@@ -1953,6 +1953,7 @@ def show_customer_dashboard():
         with row1_col1:
             st.markdown("""
             <div class="service-card">
+                <img src="https://www.holidaymonk.com/wp-content/uploads/2022/05/Car-Rental-in-India.webp" style="width: 100%; height: 200px; object-fit: cover">
                 <h3>📝 Book Service</h3>
                 <p>Schedule a new service appointment for your vehicle</p>
             </div>
@@ -1964,6 +1965,7 @@ def show_customer_dashboard():
         with row1_col2:
             st.markdown("""
             <div class="service-card">
+                <img src="https://www.shutterstock.com/image-vector/black-color-analog-flip-board-260nw-2278609195.jpg" style="width: 100%; height: 200px; object-fit: cover">
                 <h3>📋 Booking History</h3>
                 <p>View your past and upcoming service bookings</p>
             </div>
@@ -1975,6 +1977,7 @@ def show_customer_dashboard():
         with row2_col1:
             st.markdown("""
             <div class="service-card">
+                <img src="https://t4.ftcdn.net/jpg/07/81/64/13/360_F_781641329_zKW0q4jlSJXtyAnX5hqCMhW1BgC0ygQe.jpg" style="width: 100%; height: 150px; object-fit: cover; ">
                 <h3>🔍 Service Status</h3>
                 <p>Track the status of your current service</p>
             </div>
@@ -1986,6 +1989,7 @@ def show_customer_dashboard():
         with row2_col2:
             st.markdown("""
             <div class="service-card">
+                <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=500" style="width: 100%; height: 150px; object-fit: cover; border-radius: 10px 10px 0 0;">
                 <h3>💰 Cost Calculator</h3>
                 <p>Estimate the cost of your service</p>
             </div>
@@ -1997,6 +2001,7 @@ def show_customer_dashboard():
         with row3_col1:
             st.markdown("""
             <div class="service-card">
+                <img src="https://imageio.forbes.com/specials-images/imageserve/656e010c1eacbfe7918ca848/AI-Customer-Service/960x0.png?format=png&width=960" style="width: 100%; height: 150px; object-fit: cover; border-radius: 10px 10px 0 0;">
                 <h3>💬 AI Chat Support</h3>
                 <p>Get instant help from our AI chatbot</p>
             </div>
@@ -2008,6 +2013,7 @@ def show_customer_dashboard():
         with row3_col2:
             st.markdown("""
             <div class="service-card">
+                <img src="https://media.istockphoto.com/id/1357693643/photo/master-repairman-repairing-motorcycle-with-wrench-closeup.jpg?s=612x612&w=0&k=20&c=N6r16Hzkm8qrqvu-Nz12Ne-gcqGxOqTU7Jd4iCmot_E=" style="width: 100%; height: 150px; object-fit: cover; border-radius: 10px 10px 0 0;">
                 <h3>ℹ️ Service Information</h3>
                 <p>View our service packages and offerings</p>
             </div>
