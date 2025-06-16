@@ -1,4 +1,4 @@
-# Vehicle Services System
+# Vehicle Services System🏎️
 
 A comprehensive vehicle service management system built with Streamlit and Python, featuring AI-powered assistance and automated booking management.
 
@@ -203,4 +203,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Google Gemini AI for providing the AI capabilities
 - Streamlit for the web framework
-- All contributors who have helped shape this project 
